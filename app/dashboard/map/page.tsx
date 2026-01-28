@@ -144,7 +144,7 @@ export default function MapPage() {
             if (node) {
                 mapRef.current.zoomToElement(node, 2.5, 1000, "easeOut");
             } else {
-                mapRef.current.centerView(1.5, 500, "easeInOut");
+                mapRef.current.centerView(1.5, 500, "easeInOutQuad");
             }
         }
     };

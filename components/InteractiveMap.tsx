@@ -57,7 +57,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     };
 
     return (
-        <div className="relative w-full h-[600px] bg-slate-200 rounded-xl overflow-hidden shadow-inner border border-slate-300 group">
+        <div className="relative w-full h-full bg-slate-200 rounded-xl overflow-hidden shadow-inner border border-slate-300 group">
             {/* Dev Mode Indicator */}
             {devMode && (
                 <div className="absolute top-4 right-4 z-50 bg-black/80 text-green-400 text-xs font-mono p-2 rounded border border-green-500 shadow-xl pointer-events-none">

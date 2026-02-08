@@ -78,10 +78,10 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                         <div className="absolute bottom-20 md:bottom-4 right-4 z-40">
                             <button
                                 onClick={() => resetTransform()}
-                                className="bg-white/90 backdrop-blur p-3 md:p-2 rounded-xl md:rounded-lg shadow-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition-all active:scale-95 flex items-center justify-center w-12 h-12 md:w-auto md:h-auto"
+                                className="bg-white/90 backdrop-blur p-2 rounded-lg shadow-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition-all active:scale-95 flex items-center justify-center w-10 h-10 md:w-auto md:h-auto"
                                 title="Reset View"
                             >
-                                <RotateCcw size={24} className="md:w-5 md:h-5" />
+                                <RotateCcw size={20} className="md:w-5 md:h-5" />
                             </button>
                         </div>
                         <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ width: '100%', height: '100%' }}>

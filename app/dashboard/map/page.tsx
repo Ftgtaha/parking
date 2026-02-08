@@ -350,14 +350,16 @@ export default function MapPage() {
                 </button>
             </div>
 
-            {/* Mobile: Floating Find Nearest Button */}
-            <button
-                onClick={handleFindNearest}
-                className="md:hidden absolute bottom-24 right-4 z-50 bg-blue-600 text-white p-4 rounded-full shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-transform"
-                title="Find Nearest Spot"
-            >
-                <Navigation size={24} />
-            </button>
+            {/* Mobile: Floating Find Nearest Button (Only show if no spot selected) */}
+            {!selectedSpot && (
+                <button
+                    onClick={handleFindNearest}
+                    className="md:hidden absolute bottom-24 right-4 z-50 bg-blue-600 text-white p-4 rounded-full shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-transform"
+                    title="Find Nearest Spot"
+                >
+                    <Navigation size={24} />
+                </button>
+            )}
 
             {/* Admin Toolbar (Collapsible) */}
             {role === 'admin' && adminMode && (
@@ -513,49 +515,56 @@ export default function MapPage() {
                 )}
 
                 {/* --- Spot Detail Panel --- */}
+                {/* --- Spot Detail Panel --- */}
                 {selectedSpot && !isAddMode && (
-                    <div className="absolute top-4 right-4 w-72 bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-2xl border border-white/50 animate-in slide-in-from-right-10 z-50">
-                        <div className="flex justify-between items-start mb-4">
+                    <div className="fixed bottom-0 left-0 right-0 md:absolute md:top-4 md:bottom-auto md:left-auto md:right-4 w-full md:w-72 bg-white/95 backdrop-blur-md p-4 md:p-6 rounded-t-3xl md:rounded-2xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.2)] md:shadow-2xl border-t md:border border-slate-100 md:border-white/50 animate-in slide-in-from-bottom-10 md:slide-in-from-right-10 z-[60]">
+                        <div className="flex justify-between items-start mb-2 md:mb-4">
                             <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Selected Spot</span>
-                                <h3 className="text-3xl font-black text-slate-800">{selectedSpot.spot_number}</h3>
+                                <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">Selected Spot</span>
+                                <h3 className="text-2xl md:text-3xl font-black text-slate-800">{selectedSpot.spot_number}</h3>
                             </div>
-                            <button onClick={() => setSelectedSpot(null)} className="text-slate-400 hover:text-slate-600">
-                                <XCircle size={24} />
+                            <button onClick={() => setSelectedSpot(null)} className="p-2 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                                <ChevronDown className="md:hidden" size={24} />
+                                <XCircle className="hidden md:block" size={24} />
                             </button>
                         </div>
-                        {/* Spot Actions Logic (Same as before) */}
+
+                        {/* Spot Actions Logic */}
                         <div className="space-y-3">
-                            <div className="flex items-center space-x-2 text-sm text-slate-600">
-                                <span className={clsx("w-3 h-3 rounded-full",
-                                    selectedSpot.status === 0 ? "bg-green-500" :
-                                        selectedSpot.status === 1 ? "bg-purple-500" : "bg-red-500"
+                            <div className="flex items-center space-x-2 text-sm text-slate-600 mb-4 p-2 bg-slate-50 rounded-lg">
+                                <span className={clsx("w-2.5 h-2.5 rounded-full",
+                                    selectedSpot.status === 0 ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" :
+                                        selectedSpot.status === 1 ? "bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
                                 )} />
-                                <span className="font-medium">
+                                <span className="font-bold flex-1">
                                     {selectedSpot.status === 0 ? 'Available' : selectedSpot.status === 1 ? 'Reserved' : 'Occupied'}
+                                </span>
+                                <span className="text-xs text-slate-400">
+                                    {activeZone?.name} • Floor {selectedSpot.floor_level === 0 ? 'G' : selectedSpot.floor_level}
                                 </span>
                             </div>
 
                             {selectedSpot.status === 0 && (
                                 <button
                                     onClick={() => updateSpotStatus(1)}
-                                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-lg shadow-purple-200 transition-all flex justify-center items-center space-x-2"
+                                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-lg shadow-purple-200 transition-all flex justify-center items-center space-x-2 active:scale-95"
                                 >
                                     <span>Reserve Spot</span>
                                 </button>
                             )}
 
-                            {/* ... (Keep existing buttons logic) ... */}
                             {selectedSpot.status === 1 && (
                                 <div className="space-y-2">
-                                    <p className="text-xs text-center text-purple-600 font-medium bg-purple-50 py-2 rounded-lg">Reserved for you</p>
-                                    <button onClick={() => updateSpotStatus(2)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2"><Car size={20} /><span>I Parked Here</span></button>
-                                    <button onClick={() => updateSpotStatus(0)} className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-semibold transition-all">Cancel Reservation</button>
+                                    <p className="text-xs text-center text-purple-600 font-medium bg-purple-50 py-2 rounded-lg border border-purple-100">Reserved for you</p>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => updateSpotStatus(2)} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2 active:scale-95"><Car size={18} /><span>Park Here</span></button>
+                                        <button onClick={() => updateSpotStatus(0)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm font-bold transition-all active:scale-95">Cancel</button>
+                                    </div>
                                 </div>
                             )}
 
                             {selectedSpot.status === 2 && (
-                                <button onClick={() => updateSpotStatus(0)} className="w-full py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-medium shadow-xl transition-all">Leaving Spot (Make Free)</button>
+                                <button onClick={() => updateSpotStatus(0)} className="w-full py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-medium shadow-xl transition-all active:scale-95">Leaving Spot (Make Free)</button>
                             )}
 
                             {adminMode && (
@@ -567,9 +576,9 @@ export default function MapPage() {
                                             else setSelectedSpot(null);
                                         }
                                     }}
-                                    className="w-full py-2 mt-4 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
+                                    className="w-full py-2 mt-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2"
                                 >
-                                    <XCircle size={16} /> Delete Spot
+                                    <XCircle size={14} /> Delete Spot
                                 </button>
                             )}
                         </div>

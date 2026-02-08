@@ -18,6 +18,8 @@ export function useRealtimeSpots(zoneId?: number) {
     const [spots, setSpots] = useState<Spot[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [status, setStatus] = useState<string>('CONNECTING');
+
     useEffect(() => {
         let query = supabase.from('spots').select('*');
         if (zoneId) {
@@ -39,7 +41,7 @@ export function useRealtimeSpots(zoneId?: number) {
             .on(
                 'postgres_changes',
                 {
-                    event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+                    event: '*',
                     schema: 'public',
                     table: 'spots',
                     filter: zoneId ? `zone_id=eq.${zoneId}` : undefined,
@@ -50,19 +52,28 @@ export function useRealtimeSpots(zoneId?: number) {
                         setSpots((prev) => [...prev, payload.new as Spot]);
                     } else if (payload.eventType === 'UPDATE') {
                         setSpots((prev) =>
-                            prev.map((spot) => (spot.id === payload.new.id ? (payload.new as Spot) : spot))
+                            prev.map((spot) => (spot.id === payload.new.id ? { ...spot, ...payload.new } as Spot : spot))
                         );
                     } else if (payload.eventType === 'DELETE') {
                         setSpots((prev) => prev.filter((spot) => spot.id !== payload.old.id));
                     }
                 }
             )
-            .subscribe();
+            .subscribe((state) => {
+                setStatus(state);
+                console.log('Realtime Status:', state);
+            });
 
         return () => {
             supabase.removeChannel(channel);
         };
     }, [zoneId]);
 
-    return { spots, loading };
+    const updateSpot = (id: number, updates: Partial<Spot>) => {
+        setSpots((prev) =>
+            prev.map((spot) => (spot.id === id ? { ...spot, ...updates } as Spot : spot))
+        );
+    };
+
+    return { spots, loading, status, updateSpot };
 }

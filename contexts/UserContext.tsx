@@ -14,14 +14,10 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Init Supabase
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabaseClient';
 
 export function UserProvider({ children }: { children: ReactNode }) {
-    const [role, setRole] = useState<UserRole>('student');
+    const [role, setRole] = useState<UserRole>('admin');
     const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {

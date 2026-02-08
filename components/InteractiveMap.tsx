@@ -17,6 +17,8 @@ interface InteractiveMapProps {
     selectedSpotId?: number | null;
     gate?: { x: number; y: number } | null;
     onGateClick?: () => void;
+    spotWidth?: number;
+    spotHeight?: number;
 }
 
 export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapProps>(({
@@ -30,6 +32,8 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     selectedSpotId,
     gate,
     onGateClick,
+    spotWidth = 60,
+    spotHeight = 100,
 }, ref) => {
     const [lastClickedCoord, setLastClickedCoord] = useState<{ x: number; y: number } | null>(null);
 
@@ -81,13 +85,13 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
             >
                 {({ resetTransform }) => (
                     <>
-                        <div className="absolute bottom-4 right-4 z-50">
+                        <div className="absolute bottom-20 md:bottom-4 right-4 z-40">
                             <button
                                 onClick={() => resetTransform()}
-                                className="bg-white/90 backdrop-blur p-2 rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 text-slate-700 transition-all active:scale-95"
+                                className="bg-white/90 backdrop-blur p-3 md:p-2 rounded-xl md:rounded-lg shadow-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition-all active:scale-95 flex items-center justify-center w-12 h-12 md:w-auto md:h-auto"
                                 title="Reset View"
                             >
-                                <RotateCcw size={20} />
+                                <RotateCcw size={24} className="md:w-5 md:h-5" />
                             </button>
                         </div>
                         <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ width: '100%', height: '100%' }}>
@@ -113,22 +117,29 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                         }}
                                         className={clsx(
                                             "absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300",
-                                            "flex items-center justify-center rounded-full shadow-md z-10",
+                                            "flex items-center justify-center rounded-md shadow-md z-10",
                                             // Highlight Selected Spot
-                                            selectedSpotId === spot.id ? "z-50 ring-4 ring-blue-500 scale-125 shadow-xl" : "hover:scale-125",
+                                            selectedSpotId === spot.id ? "z-50 ring-4 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
                                             // Status Colors with Pulse for Reserved/Occupied
-                                            spot.status === 0 ? "w-6 h-6 bg-green-500 border-2 border-white" : "",
-                                            spot.status === 1 ? "w-8 h-8 bg-purple-600 border-2 border-white animate-pulse" : "",
-                                            spot.status === 2 ? "w-6 h-6 bg-red-500 border-2 border-white" : ""
+                                            spot.status === 0 ? "bg-green-500 border-2 border-white" : "",
+                                            spot.status === 1 ? "bg-purple-600 border-2 border-white animate-pulse" : "",
+                                            spot.status === 2 ? "bg-red-500 border-2 border-white" : ""
                                         )}
                                         style={{
                                             left: `${spot.x_coord}%`,
                                             top: `${spot.y_coord}%`,
+                                            width: `${spotWidth}px`,
+                                            height: `${spotHeight}px`,
                                         }}
                                         title={`Spot: ${spot.spot_number} (${spot.status === 0 ? 'Free' : spot.status === 1 ? 'Reserved' : 'Occupied'})`}
                                     >
                                         {spot.status !== 0 && (
-                                            <span className="text-[8px] font-bold text-white tracking-tighter">
+                                            <span
+                                                className={clsx(
+                                                    "text-[10px] font-bold text-white tracking-tighter",
+                                                    spotHeight > spotWidth ? "-rotate-90" : ""
+                                                )}
+                                            >
                                                 {spot.spot_number}
                                             </span>
                                         )}
@@ -164,12 +175,9 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                         }}
                                         title="Entrance (Click to Manage)"
                                     >
-                                        <div className="bg-white p-1.5 rounded-full shadow-lg border-2 border-slate-800 group-hover/gate:scale-110 group-hover/gate:border-red-600 transition-all">
-                                            <DoorOpen size={24} className="text-slate-800 group-hover/gate:text-red-600" />
+                                        <div className="bg-white p-1 rounded-full shadow-lg border-2 border-slate-800 group-hover/gate:scale-110 group-hover/gate:border-red-600 transition-all">
+                                            <DoorOpen size={16} className="text-slate-800 group-hover/gate:text-red-600" />
                                         </div>
-                                        <span className="mt-1 text-[10px] font-black bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm group-hover/gate:bg-red-600">
-                                            ENTRANCE
-                                        </span>
                                     </div>
                                 )}
                             </div>

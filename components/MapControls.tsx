@@ -9,6 +9,8 @@ export interface ZoneData {
     type: 'building' | 'outdoor';
     total_floors: number;
     image_url?: string;
+    spot_width?: number; // Optional until DB migration is guaranteed
+    spot_height?: number; // Optional until DB migration is guaranteed
 }
 
 interface MapControlsProps {

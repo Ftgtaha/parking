@@ -43,26 +43,26 @@ export function MapControls({
         : [0];
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 bg-white/90 backdrop-blur-sm p-2 md:p-3 rounded-xl shadow-sm border border-slate-200 mb-2 md:mb-4 transition-all">
 
             {/* Zone Switcher */}
-            <div className="flex items-center space-x-2 overflow-x-auto max-w-full pb-2 md:pb-0">
-                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2 shrink-0">
-                    <MapIcon size={16} /> Zone
+            <div className="flex items-center space-x-2 overflow-x-auto max-w-full pb-1 md:pb-0 scrollbar-hide">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1 shrink-0">
+                    <MapIcon size={14} /> <span className="hidden md:inline">Zone</span>
                 </span>
-                <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
+                <div className="flex bg-slate-100/50 p-0.5 rounded-lg gap-1">
                     {zones.length === 0 ? (
-                        <span className="text-xs text-slate-400 px-3 py-2">Loading zones...</span>
+                        <span className="text-[10px] text-slate-400 px-2 py-1">Loading...</span>
                     ) : (
                         zones.map((zone) => (
                             <button
                                 key={zone.id}
                                 onClick={() => onZoneChange(zone.id)}
                                 className={clsx(
-                                    "px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap",
+                                    "px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap",
                                     currentZoneId === zone.id
-                                        ? "bg-white text-blue-600 shadow-sm"
-                                        : "text-slate-500 hover:text-slate-700"
+                                        ? "bg-white text-blue-600 shadow-sm border border-slate-100"
+                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                                 )}
                             >
                                 {zone.name}
@@ -74,17 +74,17 @@ export function MapControls({
 
             {/* Floor Switcher (Only visible for Building) */}
             {activeZone?.type === 'building' && (
-                <div className="flex items-center space-x-2 animate-in fade-in slide-in-from-left-4">
-                    <span className="text-sm font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
-                        <Layers size={16} /> Floor
+                <div className="flex items-center space-x-2 animate-in fade-in slide-in-from-left-4 border-t md:border-t-0 border-slate-100 pt-2 md:pt-0">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                        <Layers size={14} /> <span className="hidden md:inline">Floor</span>
                     </span>
-                    <div className="flex bg-slate-100 p-1 rounded-lg space-x-1">
+                    <div className="flex bg-slate-100/50 p-0.5 rounded-lg space-x-1">
                         {floors.map((floor) => (
                             <button
                                 key={floor}
                                 onClick={() => onFloorChange(floor)}
                                 className={clsx(
-                                    "w-10 h-8 flex items-center justify-center rounded-md text-sm font-bold transition-all",
+                                    "w-8 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all",
                                     currentFloor === floor
                                         ? "bg-blue-600 text-white shadow-md"
                                         : "bg-white text-slate-600 hover:bg-slate-200"

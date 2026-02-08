@@ -7,7 +7,7 @@ import { AddSpotModal } from '@/components/AddSpotModal';
 import { useRealtimeSpots, Spot } from '@/hooks/useRealtimeSpots';
 import { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 import { supabase } from '@/lib/supabaseClient';
-import { Loader2, Car, Navigation, XCircle, DoorOpen, Layers } from 'lucide-react';
+import { MapPin, ZoomIn, ZoomOut, User, Navigation, LogOut, Loader2, DoorOpen, XCircle, CheckCircle2, Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useUser } from '@/contexts/UserContext';
 
@@ -16,6 +16,7 @@ export default function MapPage() {
     const [currentZoneId, setCurrentZoneId] = useState<number | null>(null);
     const [currentFloor, setCurrentFloor] = useState(0);
     const [adminMode, setAdminMode] = useState(false);
+    const [showAdminPanel, setShowAdminPanel] = useState(false); // Default collapsed on mobile
     const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
     const { role, userId } = useUser();
     const [loadingZones, setLoadingZones] = useState(true);
@@ -358,97 +359,110 @@ export default function MapPage() {
                 <Navigation size={24} />
             </button>
 
-            {/* Admin Toolbar (Scrollable on mobile) */}
+            {/* Admin Toolbar (Collapsible) */}
             {role === 'admin' && adminMode && (
-                <div className="shrink-0 mb-4 space-y-4 animate-in slide-in-from-top-5 max-h-[30vh] overflow-y-auto md:max-h-none md:overflow-visible custom-scrollbar">
-
-                    {/* Top Bar with Gate/Actions */}
-                    <div className="p-3 md:p-4 bg-slate-800 rounded-xl text-white flex gap-3 md:gap-4 items-center flex-wrap shadow-lg">
-                        <span className="font-mono text-green-400 font-bold text-sm md:text-base">ADMIN</span>
-                        <div className="h-4 w-px bg-slate-600 mx-1 md:h-6 md:mx-2"></div>
-
-                        <button
-                            onClick={() => setIsSetGateMode(!isSetGateMode)}
-                            className={clsx(
-                                "px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-xs md:text-sm",
-                                isSetGateMode
-                                    ? "bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105"
-                                    : "bg-slate-700 hover:bg-slate-600 text-slate-200"
-                            )}
-                        >
-                            <DoorOpen size={16} />
-                            {isSetGateMode ? 'Set Entrance' : 'Set Entrance'}
-                        </button>
-
-                        {gateLocation && (
-                            <button
-                                onClick={handleRemoveGate}
-                                className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-lg text-xs md:text-sm font-semibold border border-red-800 transition-all flex items-center gap-2"
-                            >
-                                <XCircle size={14} />
-                                Remove
-                            </button>
+                <div className="shrink-0 mb-2 md:mb-4 animate-in slide-in-from-top-2">
+                    <button
+                        onClick={() => setShowAdminPanel(!showAdminPanel)}
+                        className="w-full md:w-auto mb-2 flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg md:rounded-full hover:bg-slate-700 transition-colors"
+                    >
+                        {showAdminPanel ? (
+                            <>Close Admin Panel <ChevronDown size={14} /></>
+                        ) : (
+                            <>Open Admin Panel <ChevronUp size={14} /></>
                         )}
-                    </div>
+                    </button>
 
-                    {/* Spot Configuration Panel */}
-                    <div className="p-3 md:p-4 bg-white rounded-xl border-2 border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center text-sm">
-                        <div className="flex items-center gap-2">
-                            <div className="p-1.5 md:p-2 bg-purple-100 rounded-lg text-purple-600">
-                                <Layers size={18} />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-slate-800 text-sm md:text-base">Spot Size</h4>
-                            </div>
-                        </div>
+                    {showAdminPanel && (
+                        <div className="space-y-4 animate-in slide-in-from-top-5 max-h-[40vh] overflow-y-auto md:max-h-none md:overflow-visible custom-scrollbar border-l-2 border-slate-800 pl-2 md:border-0 md:pl-0">
+                            {/* Top Bar with Gate/Actions */}
+                            <div className="p-3 md:p-4 bg-slate-800 rounded-xl text-white flex gap-3 md:gap-4 items-center flex-wrap shadow-lg">
+                                <span className="font-mono text-green-400 font-bold text-sm md:text-base">ADMIN</span>
+                                <div className="h-4 w-px bg-slate-600 mx-1 md:h-6 md:mx-2"></div>
 
-                        <div className="flex gap-4 items-center flex-1 w-full md:w-auto">
-                            <div className="flex-1 space-y-1">
-                                <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-500">
-                                    <label>Width</label>
-                                    <span>{spotWidth}px</span>
+                                <button
+                                    onClick={() => setIsSetGateMode(!isSetGateMode)}
+                                    className={clsx(
+                                        "px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-xs md:text-sm",
+                                        isSetGateMode
+                                            ? "bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105"
+                                            : "bg-slate-700 hover:bg-slate-600 text-slate-200"
+                                    )}
+                                >
+                                    <DoorOpen size={16} />
+                                    {isSetGateMode ? 'Set Entrance' : 'Set Entrance'}
+                                </button>
+
+                                {gateLocation && (
+                                    <button
+                                        onClick={handleRemoveGate}
+                                        className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-lg text-xs md:text-sm font-semibold border border-red-800 transition-all flex items-center gap-2"
+                                    >
+                                        <XCircle size={14} />
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Spot Configuration Panel */}
+                            <div className="p-3 md:p-4 bg-white rounded-xl border-2 border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 md:p-2 bg-purple-100 rounded-lg text-purple-600">
+                                        <Layers size={18} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 text-sm md:text-base">Spot Size</h4>
+                                    </div>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="5" max="150" step="1"
-                                    value={spotWidth}
-                                    onChange={(e) => setSpotWidth(Number(e.target.value))}
-                                    className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                                />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                                <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-500">
-                                    <label>Height</label>
-                                    <span>{spotHeight}px</span>
+
+                                <div className="flex gap-4 items-center flex-1 w-full md:w-auto">
+                                    <div className="flex-1 space-y-1">
+                                        <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-500">
+                                            <label>Width</label>
+                                            <span>{spotWidth}px</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="5" max="150" step="1"
+                                            value={spotWidth}
+                                            onChange={(e) => setSpotWidth(Number(e.target.value))}
+                                            className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-500">
+                                            <label>Height</label>
+                                            <span>{spotHeight}px</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="5" max="150" step="1"
+                                            value={spotHeight}
+                                            onChange={(e) => setSpotHeight(Number(e.target.value))}
+                                            className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="5" max="150" step="1"
-                                    value={spotHeight}
-                                    onChange={(e) => setSpotHeight(Number(e.target.value))}
-                                    className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                                />
+
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <button
+                                        onClick={handleRotateSpot}
+                                        className="flex-1 md:flex-none px-3 py-1.5 md:px-4 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 text-xs md:text-sm"
+                                        title="Swap Width and Height"
+                                    >
+                                        <Navigation className="rotate-90" size={14} /> Rotate
+                                    </button>
+                                    <button
+                                        onClick={handleSaveSpotConfig}
+                                        disabled={isSavingConfig}
+                                        className="flex-1 md:flex-none px-4 py-1.5 md:px-6 md:py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-50 text-xs md:text-sm"
+                                    >
+                                        {isSavingConfig ? 'Saving...' : 'Save'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-
-                        <div className="flex gap-2 w-full md:w-auto">
-                            <button
-                                onClick={handleRotateSpot}
-                                className="flex-1 md:flex-none px-3 py-1.5 md:px-4 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 text-xs md:text-sm"
-                                title="Swap Width and Height"
-                            >
-                                <Navigation className="rotate-90" size={14} /> Rotate
-                            </button>
-                            <button
-                                onClick={handleSaveSpotConfig}
-                                disabled={isSavingConfig}
-                                className="flex-1 md:flex-none px-4 py-1.5 md:px-6 md:py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-50 text-xs md:text-sm"
-                            >
-                                {isSavingConfig ? 'Saving...' : 'Save'}
-                            </button>
-                        </div>
-                    </div>
-
+                    )}
                 </div>
             )}
 

@@ -43,9 +43,9 @@ export function AddSpotModal({
     };
 
     return (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
             <div
-                className="w-full max-w-md bg-white/30 backdrop-blur-xl border border-white/40 shadow-2xl rounded-3xl p-8 relative overflow-hidden"
+                className="w-full sm:max-w-md bg-white/95 sm:bg-white/80 backdrop-blur-xl border-t sm:border border-white/40 shadow-2xl rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 relative overflow-hidden transition-all animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Decorative background blob */}

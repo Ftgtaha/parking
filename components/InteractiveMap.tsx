@@ -63,17 +63,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     return (
         <div className="relative w-full h-full bg-slate-200 rounded-xl overflow-hidden shadow-inner border border-slate-300 group">
             {/* Dev Mode Indicator */}
-            {devMode && (
-                <div className="absolute top-4 right-4 z-50 bg-black/80 text-green-400 text-xs font-mono p-2 rounded border border-green-500 shadow-xl pointer-events-none">
-                    ADMIN MODE ACTIVE <br />
-                    Click map to capture coords
-                    {lastClickedCoord && (
-                        <div className="mt-1 pt-1 border-t border-gray-700 text-white">
-                            Last: {lastClickedCoord.x}%, {lastClickedCoord.y}%
-                        </div>
-                    )}
-                </div>
-            )}
+
 
             <TransformWrapper
                 ref={ref}
@@ -175,8 +165,8 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                         }}
                                         title="Entrance (Click to Manage)"
                                     >
-                                        <div className="bg-white p-1 rounded-full shadow-lg border-2 border-slate-800 group-hover/gate:scale-110 group-hover/gate:border-red-600 transition-all">
-                                            <DoorOpen size={16} className="text-slate-800 group-hover/gate:text-red-600" />
+                                        <div className="bg-white p-0.5 md:p-1 rounded-full shadow-md border border-slate-800 group-hover/gate:scale-110 group-hover/gate:border-red-600 transition-all">
+                                            <DoorOpen size={14} className="text-slate-800 group-hover/gate:text-red-600 md:w-4 md:h-4 w-3 h-3" />
                                         </div>
                                     </div>
                                 )}

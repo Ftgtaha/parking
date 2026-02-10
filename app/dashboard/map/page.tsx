@@ -326,7 +326,7 @@ export default function MapPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-64px)] md:h-[calc(100vh-100px)] relative overflow-hidden md:static">
             {/* Header / Top Bar */}
-            <div className="shrink-0 absolute top-0 left-0 right-0 z-20 bg-white/90 backdrop-blur-md px-3 py-2 shadow-sm md:static md:bg-transparent md:shadow-none md:p-0 md:mb-4 flex justify-between items-center transition-all">
+            <div className="shrink-0 z-20 bg-white px-3 py-2 shadow-sm md:static md:bg-transparent md:shadow-none md:p-0 md:mb-4 flex justify-between items-center transition-all border-b md:border-b-0 border-slate-100">
                 <div>
                     <h2 className="text-sm md:text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <span className="hidden md:inline">Interactive Map</span>
@@ -366,10 +366,10 @@ export default function MapPage() {
 
             {/* Admin Toolbar (Collapsible) */}
             {role === 'admin' && adminMode && (
-                <div className="absolute top-[60px] left-0 right-0 z-30 px-2 md:static md:px-0 md:shrink-0 md:mb-4 animate-in slide-in-from-top-2">
+                <div className="shrink-0 px-2 pt-2 md:static md:px-0 md:mb-4 animate-in slide-in-from-top-2 bg-slate-50 md:bg-transparent border-b md:border-b-0 border-slate-200 pb-2 md:pb-0">
                     <button
                         onClick={() => setShowAdminPanel(!showAdminPanel)}
-                        className="w-full md:w-auto mb-2 flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg md:rounded-full hover:bg-slate-700 transition-colors shadow-lg md:shadow-none"
+                        className="w-full md:w-auto mb-2 flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg md:rounded-full hover:bg-slate-700 transition-colors shadow-sm md:shadow-none"
                     >
                         {showAdminPanel ? (
                             <>Close Admin Panel <ChevronDown size={14} /></>
@@ -379,7 +379,7 @@ export default function MapPage() {
                     </button>
 
                     {showAdminPanel && (
-                        <div className="space-y-4 animate-in slide-in-from-top-5 max-h-[40vh] overflow-y-auto md:max-h-none md:overflow-visible custom-scrollbar border-l-2 border-slate-800 pl-2 md:border-0 md:pl-0 bg-white/95 md:bg-transparent p-2 rounded-xl shadow-xl md:shadow-none md:p-0">
+                        <div className="space-y-4 animate-in slide-in-from-top-5 max-h-[40vh] overflow-y-auto md:max-h-none md:overflow-visible custom-scrollbar border-l-2 border-slate-800 pl-2 md:border-0 md:pl-0 bg-white/50 md:bg-transparent p-2 rounded-xl md:p-0">
                             {/* Top Bar with Gate/Actions */}
                             <div className="p-3 md:p-4 bg-slate-800 rounded-xl text-white flex gap-3 md:gap-4 items-center flex-wrap shadow-lg">
                                 <span className="font-mono text-green-400 font-bold text-sm md:text-base">ADMIN</span>
@@ -483,10 +483,10 @@ export default function MapPage() {
                 }}
                 onFloorChange={setCurrentFloor}
                 onDevModeToggle={() => role === 'admin' && setAdminMode(!adminMode)}
-                className="absolute top-[60px] md:top-auto left-2 right-2 z-20 md:static md:mb-4 shadow-lg md:shadow-sm"
+                className="shrink-0 p-2 md:mb-4 shadow-sm border-b md:border-b-0 border-slate-100"
             />
 
-            <div className="absolute inset-0 z-0 top-0 md:static md:flex-1 md:min-h-0 md:relative shadow-none md:shadow-2xl rounded-none md:rounded-2xl overflow-hidden border-0 md:border-4 border-slate-100 bg-slate-100">
+            <div className="flex-1 relative min-h-0 shadow-none md:shadow-2xl rounded-none md:rounded-2xl overflow-hidden border-0 md:border-4 border-slate-100 bg-slate-100">
                 <InteractiveMap
                     ref={mapRef}
                     // Use dynamic image URL, fallback to placeholder if missing

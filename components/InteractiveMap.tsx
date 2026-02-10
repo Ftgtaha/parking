@@ -37,6 +37,8 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
 }, ref) => {
     const [lastClickedCoord, setLastClickedCoord] = useState<{ x: number; y: number } | null>(null);
 
+    const [mapDimensions, setMapDimensions] = useState<{ width: number; height: number } | null>(null);
+
     // Reference dimensions for consistent responsive sizing
     // We treat the slider values as "pixels on a standard 1200x800 desktop map view"
     const REFERENCE_WIDTH = 1200;
@@ -89,24 +91,34 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                 <RotateCcw size={20} className="md:w-5 md:h-5" />
                             </button>
                         </div>
-                        <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ width: '100%', height: '100%' }}>
+                        <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <div
-                                className={clsx("relative w-full h-full", devMode && "cursor-crosshair")}
+                                className={clsx("relative", devMode && "cursor-crosshair")}
+                                style={{
+                                    aspectRatio: mapDimensions ? `${mapDimensions.width} / ${mapDimensions.height}` : undefined,
+                                    width: mapDimensions ? 'auto' : '100%',
+                                    height: mapDimensions ? 'auto' : '100%',
+                                    maxWidth: '100%',
+                                    maxHeight: '100%',
+                                }}
                                 onClick={handleMapClick}
                             >
                                 {/* Background Map Image */}
                                 <img
                                     src={imageUrl}
                                     alt="Parking Map"
-                                    className="w-full h-full object-contain"
+                                    className="w-full h-full object-contain block" // block removes bottom spacing
+                                    onLoad={(e) => {
+                                        const img = e.currentTarget;
+                                        setMapDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                    }}
                                 />
 
-                                {/* Spots Overlay */}
+                                {/* Spots Overlay - Only render when we have dimensions to ensure correct placement */}
                                 {floorSpots.map((spot) => {
-                                    // Calculate relative size if dimensions available, else fallback to pixels (or better yet, hide until loaded to avoid jump)
-                                    // Using pixels as fallback for now
                                     // Calculate relative size based on reference dimensions
                                     // This ensures consistent visual size ratio across all devices
+                                    // We use the image's own coordinate system now because the container matches the image exactly.
                                     const widthStyle = `${(spotWidth / REFERENCE_WIDTH) * 100}%`;
                                     const heightStyle = `${(spotHeight / REFERENCE_HEIGHT) * 100}%`;
 

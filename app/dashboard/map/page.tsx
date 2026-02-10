@@ -37,7 +37,7 @@ export default function MapPage() {
     const [isSavingConfig, setIsSavingConfig] = useState(false);
 
     const mapRef = useRef<ReactZoomPanPinchRef>(null);
-    const { spots, loading: spotsLoading, status, updateSpot } = useRealtimeSpots();
+    const { spots, loading: spotsLoading, status, updateSpot, addSpot, removeSpot } = useRealtimeSpots();
 
     // Fetch Zones on Mount
     useEffect(() => {
@@ -272,7 +272,7 @@ export default function MapPage() {
         setIsSaving(true);
         setSaveError(null);
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('spots')
             .insert([
                 {
@@ -283,7 +283,9 @@ export default function MapPage() {
                     x_coord: Math.round(startSpot.x),
                     y_coord: Math.round(startSpot.y),
                 }
-            ]);
+            ])
+            .select()
+            .single();
 
         setIsSaving(false);
 
@@ -291,6 +293,9 @@ export default function MapPage() {
             console.error('Save Error:', error);
             setSaveError(error.message || 'Unknown error occurred');
         } else {
+            if (data) {
+                addSpot(data as Spot); // Optimistic / Immediate Update
+            }
             setIsAddMode(false);
             setStartSpot(null);
         }
@@ -576,9 +581,16 @@ export default function MapPage() {
                                 <button
                                     onClick={async () => {
                                         if (confirm(`Delete spot ${selectedSpot.spot_number}?`)) {
-                                            const { error } = await supabase.from('spots').delete().eq('id', selectedSpot.id);
-                                            if (error) alert(error.message);
-                                            else setSelectedSpot(null);
+                                            const idToDelete = selectedSpot.id;
+                                            // Optimistic Delete
+                                            removeSpot(idToDelete);
+                                            setSelectedSpot(null);
+
+                                            const { error } = await supabase.from('spots').delete().eq('id', idToDelete);
+                                            if (error) {
+                                                alert(error.message);
+                                                // Ideally revert here, but for now relies on refresh if failed
+                                            }
                                         }
                                     }}
                                     className="w-full py-2 mt-1 md:mt-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2"

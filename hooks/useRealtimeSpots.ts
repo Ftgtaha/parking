@@ -75,5 +75,13 @@ export function useRealtimeSpots(zoneId?: number) {
         );
     };
 
-    return { spots, loading, status, updateSpot };
+    const addSpot = (spot: Spot) => {
+        setSpots((prev) => [...prev, spot]);
+    };
+
+    const removeSpot = (id: number) => {
+        setSpots((prev) => prev.filter((spot) => spot.id !== id));
+    };
+
+    return { spots, loading, status, updateSpot, addSpot, removeSpot };
 }

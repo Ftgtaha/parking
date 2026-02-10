@@ -17,6 +17,7 @@ interface InteractiveMapProps {
     selectedSpotId?: number | null;
     gate?: { x: number; y: number } | null;
     onGateClick?: () => void;
+    onSpotMoveEnd?: (id: number, x: number, y: number) => void;
     spotWidth?: number;
     spotHeight?: number;
 }
@@ -32,10 +33,14 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     selectedSpotId,
     gate,
     onGateClick,
+    onSpotMoveEnd,
     spotWidth = 60,
     spotHeight = 100,
 }, ref) => {
     const [lastClickedCoord, setLastClickedCoord] = useState<{ x: number; y: number } | null>(null);
+    const [draggedSpot, setDraggedSpot] = useState<{ id: number; startX: number; startY: number; initialSpotX: number; initialSpotY: number } | null>(null);
+    const [currentDragPos, setCurrentDragPos] = useState<{ x: number; y: number } | null>(null);
+    const mapContainerRef = React.useRef<HTMLDivElement>(null);
 
     const [mapDimensions, setMapDimensions] = useState<{ width: number; height: number } | null>(null);
 
@@ -44,6 +49,8 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
 
     const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!devMode) return;
+        // If dragging, ignore click
+        if (draggedSpot) return;
 
         // Calculate relative coordinates in percentage
         const rect = e.currentTarget.getBoundingClientRect();
@@ -60,6 +67,64 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
         if (onMapClick) {
             onMapClick(roundedX, roundedY);
         }
+    };
+
+    // Drag Handlers
+    const handleSpotPointerDown = (e: React.PointerEvent, spot: Spot) => {
+        if (!devMode) return;
+        e.stopPropagation();
+        e.preventDefault(); // Prevent default touch actions like scroll/zoom while dragging
+
+        const target = e.currentTarget as HTMLElement;
+        target.setPointerCapture(e.pointerId);
+
+        setDraggedSpot({
+            id: spot.id,
+            startX: e.clientX,
+            startY: e.clientY,
+            initialSpotX: spot.x_coord,
+            initialSpotY: spot.y_coord,
+        });
+        setCurrentDragPos({ x: spot.x_coord, y: spot.y_coord });
+    };
+
+    const handleSpotPointerMove = (e: React.PointerEvent) => {
+        if (!draggedSpot || !mapContainerRef.current) return;
+        e.stopPropagation();
+        e.preventDefault();
+
+        const mapRect = mapContainerRef.current.getBoundingClientRect();
+
+        // Calculate delta in pixels
+        const deltaXPixels = e.clientX - draggedSpot.startX;
+        const deltaYPixels = e.clientY - draggedSpot.startY;
+
+        // Convert delta to percentage relative to current map size (handles zoom)
+        const deltaXPercent = (deltaXPixels / mapRect.width) * 100;
+        const deltaYPercent = (deltaYPixels / mapRect.height) * 100;
+
+        const newX = draggedSpot.initialSpotX + deltaXPercent;
+        const newY = draggedSpot.initialSpotY + deltaYPercent;
+
+        setCurrentDragPos({ x: newX, y: newY });
+    };
+
+    const handleSpotPointerUp = (e: React.PointerEvent) => {
+        if (!draggedSpot) return;
+        e.stopPropagation();
+
+        const target = e.currentTarget as HTMLElement;
+        target.releasePointerCapture(e.pointerId);
+
+        if (onSpotMoveEnd && currentDragPos) {
+            // Round to 2 decimals for cleanliness
+            const finalX = Math.round(currentDragPos.x * 100) / 100;
+            const finalY = Math.round(currentDragPos.y * 100) / 100;
+            onSpotMoveEnd(draggedSpot.id, finalX, finalY);
+        }
+
+        setDraggedSpot(null);
+        setCurrentDragPos(null);
     };
 
     return (
@@ -88,6 +153,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                         </div>
                         <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <div
+                                ref={mapContainerRef}
                                 className={clsx("relative", devMode && "cursor-crosshair")}
                                 style={{
                                     aspectRatio: mapDimensions ? `${mapDimensions.width} / ${mapDimensions.height}` : undefined,
@@ -116,13 +182,26 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                     const widthStyle = `${(spotWidth / mapDimensions.width) * 100}%`;
                                     const heightStyle = `${(spotHeight / mapDimensions.height) * 100}%`;
 
+                                    const isDragging = draggedSpot?.id === spot.id;
+                                    const x = isDragging && currentDragPos ? currentDragPos.x : spot.x_coord;
+                                    const y = isDragging && currentDragPos ? currentDragPos.y : spot.y_coord;
+
                                     return (
                                         <div
                                             key={spot.id}
                                             id={`spot-${spot.id}`}
+                                            onPointerDown={(e) => handleSpotPointerDown(e, spot)}
+                                            onPointerMove={handleSpotPointerMove}
+                                            onPointerUp={handleSpotPointerUp}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onSpotClick?.(spot);
+                                                // Only trigger click if not dragging (simple check: if we just released a drag, we might fallback here? 
+                                                // actually onPointerUp happens before onClick usually, but preventing default in pointerdown often kills click. 
+                                                // So we might technically block `onSpotClick` during drag mode.
+                                                // But let's keep it simply separated: 
+                                                // If we didn't drag significantly? Ideally separate drag vs click logic.
+                                                // For now, let's allow click if valid.
+                                                if (!isDragging) onSpotClick?.(spot);
                                             }}
                                             className={clsx(
                                                 "absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300",
@@ -132,13 +211,16 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                                 // Status Colors with Pulse for Reserved/Occupied
                                                 spot.status === 0 ? "bg-green-500 border-2 border-white" : "",
                                                 spot.status === 1 ? "bg-purple-600 border-2 border-white animate-pulse" : "",
-                                                spot.status === 2 ? "bg-red-500 border-2 border-white" : ""
+                                                spot.status === 2 ? "bg-red-500 border-2 border-white" : "",
+                                                // Dragging styles
+                                                isDragging ? "z-[60] scale-125 opacity-90 shadow-2xl ring-4 ring-yellow-400 cursor-grabbing transition-none" : ""
                                             )}
                                             style={{
-                                                left: `${spot.x_coord}%`,
-                                                top: `${spot.y_coord}%`,
+                                                left: `${x}%`,
+                                                top: `${y}%`,
                                                 width: widthStyle,
                                                 height: heightStyle,
+                                                touchAction: 'none', // Critical for dragging on touch devices without scrolling page
                                             }}
                                             title={`Spot: ${spot.spot_number} (${spot.status === 0 ? 'Free' : spot.status === 1 ? 'Reserved' : 'Occupied'})`}
                                         >

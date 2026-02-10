@@ -61,12 +61,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     </button>
                 </div>
 
-                <div className="px-6 py-4">
-                    <div className="flex items-center space-x-2 text-sm text-slate-400 bg-slate-800/50 p-2 rounded-lg border border-slate-700">
-                        {role === 'admin' ? <ShieldCheck size={16} className="text-green-400" /> : <User size={16} className="text-blue-400" />}
-                        <span>Role: <span className="font-bold text-slate-200 capitalize">{role}</span></span>
-                    </div>
-                </div>
+
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {filteredNavItems.map((item) => {

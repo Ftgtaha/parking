@@ -322,6 +322,23 @@ export default function MapPage() {
             alert('Error updating spot: ' + error.message);
             // Revert would go here, but for now we rely on user refresh if it fails badly
         }
+    }
+
+    const handleSpotMoveEnd = async (id: number, x: number, y: number) => {
+        if (!userId || !adminMode) return;
+
+        // Optimistic Update
+        updateSpot(id, { x_coord: x, y_coord: y });
+
+        const { error } = await supabase
+            .from('spots')
+            .update({ x_coord: x, y_coord: y })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error updating spot position:', error);
+            alert('Failed to save new position: ' + error.message);
+        }
     };
 
     if (loadingZones || spotsLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-blue-600" /> <span className="ml-2">Loading Map...</span></div>;
@@ -507,6 +524,7 @@ export default function MapPage() {
                     selectedSpotId={selectedSpot?.id}
                     gate={gateLocation}
                     onGateClick={() => adminMode && handleRemoveGate()}
+                    onSpotMoveEnd={handleSpotMoveEnd}
                     spotWidth={spotWidth}
                     spotHeight={spotHeight}
                 />

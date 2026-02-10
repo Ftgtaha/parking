@@ -37,6 +37,11 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
 }, ref) => {
     const [lastClickedCoord, setLastClickedCoord] = useState<{ x: number; y: number } | null>(null);
 
+    // Reference dimensions for consistent responsive sizing
+    // We treat the slider values as "pixels on a standard 1200x800 desktop map view"
+    const REFERENCE_WIDTH = 1200;
+    const REFERENCE_HEIGHT = 800;
+
     // Filter spots for the current floor
     const floorSpots = spots.filter((s) => s.floor_level === activeFloor);
 
@@ -97,44 +102,54 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                 />
 
                                 {/* Spots Overlay */}
-                                {floorSpots.map((spot) => (
-                                    <div
-                                        key={spot.id}
-                                        id={`spot-${spot.id}`}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onSpotClick?.(spot);
-                                        }}
-                                        className={clsx(
-                                            "absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300",
-                                            "flex items-center justify-center rounded-md shadow-md z-10",
-                                            // Highlight Selected Spot
-                                            selectedSpotId === spot.id ? "z-50 ring-4 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
-                                            // Status Colors with Pulse for Reserved/Occupied
-                                            spot.status === 0 ? "bg-green-500 border-2 border-white" : "",
-                                            spot.status === 1 ? "bg-purple-600 border-2 border-white animate-pulse" : "",
-                                            spot.status === 2 ? "bg-red-500 border-2 border-white" : ""
-                                        )}
-                                        style={{
-                                            left: `${spot.x_coord}%`,
-                                            top: `${spot.y_coord}%`,
-                                            width: `${spotWidth}px`,
-                                            height: `${spotHeight}px`,
-                                        }}
-                                        title={`Spot: ${spot.spot_number} (${spot.status === 0 ? 'Free' : spot.status === 1 ? 'Reserved' : 'Occupied'})`}
-                                    >
-                                        {spot.status !== 0 && (
-                                            <span
-                                                className={clsx(
-                                                    "text-[10px] font-bold text-white tracking-tighter",
-                                                    spotHeight > spotWidth ? "-rotate-90" : ""
-                                                )}
-                                            >
-                                                {spot.spot_number}
-                                            </span>
-                                        )}
-                                    </div>
-                                ))}
+                                {floorSpots.map((spot) => {
+                                    // Calculate relative size if dimensions available, else fallback to pixels (or better yet, hide until loaded to avoid jump)
+                                    // Using pixels as fallback for now
+                                    // Calculate relative size based on reference dimensions
+                                    // This ensures consistent visual size ratio across all devices
+                                    const widthStyle = `${(spotWidth / REFERENCE_WIDTH) * 100}%`;
+                                    const heightStyle = `${(spotHeight / REFERENCE_HEIGHT) * 100}%`;
+
+                                    return (
+                                        <div
+                                            key={spot.id}
+                                            id={`spot-${spot.id}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onSpotClick?.(spot);
+                                            }}
+                                            className={clsx(
+                                                "absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300",
+                                                "flex items-center justify-center rounded-md shadow-md z-10",
+                                                // Highlight Selected Spot
+                                                selectedSpotId === spot.id ? "z-50 ring-4 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
+                                                // Status Colors with Pulse for Reserved/Occupied
+                                                spot.status === 0 ? "bg-green-500 border-2 border-white" : "",
+                                                spot.status === 1 ? "bg-purple-600 border-2 border-white animate-pulse" : "",
+                                                spot.status === 2 ? "bg-red-500 border-2 border-white" : ""
+                                            )}
+                                            style={{
+                                                left: `${spot.x_coord}%`,
+                                                top: `${spot.y_coord}%`,
+                                                width: widthStyle,
+                                                height: heightStyle,
+                                            }}
+                                            title={`Spot: ${spot.spot_number} (${spot.status === 0 ? 'Free' : spot.status === 1 ? 'Reserved' : 'Occupied'})`}
+                                        >
+                                            {spot.status !== 0 && (
+                                                <span
+                                                    className={clsx(
+                                                        "text-[10px] font-bold text-white tracking-tighter",
+                                                        spotHeight > spotWidth ? "-rotate-90" : ""
+                                                    )}
+                                                    style={{ fontSize: 'container' }}
+                                                >
+                                                    {spot.spot_number}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
 
                                 {/* Ghost Marker (Temp Spot) */}
                                 {tempSpot && tempSpot.floor_level === activeFloor && (

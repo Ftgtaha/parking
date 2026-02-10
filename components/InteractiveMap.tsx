@@ -39,11 +39,6 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
 
     const [mapDimensions, setMapDimensions] = useState<{ width: number; height: number } | null>(null);
 
-    // Reference dimensions for consistent responsive sizing
-    // We treat the slider values as "pixels on a standard 1200x800 desktop map view"
-    const REFERENCE_WIDTH = 1200;
-    const REFERENCE_HEIGHT = 800;
-
     // Filter spots for the current floor
     const floorSpots = spots.filter((s) => s.floor_level === activeFloor);
 
@@ -115,12 +110,11 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                 />
 
                                 {/* Spots Overlay - Only render when we have dimensions to ensure correct placement */}
-                                {floorSpots.map((spot) => {
-                                    // Calculate relative size based on reference dimensions
-                                    // This ensures consistent visual size ratio across all devices
-                                    // We use the image's own coordinate system now because the container matches the image exactly.
-                                    const widthStyle = `${(spotWidth / REFERENCE_WIDTH) * 100}%`;
-                                    const heightStyle = `${(spotHeight / REFERENCE_HEIGHT) * 100}%`;
+                                {mapDimensions && floorSpots.map((spot) => {
+                                    // Calculate relative size based on the specific image's natural dimensions
+                                    // accurately representing "pixels on the image"
+                                    const widthStyle = `${(spotWidth / mapDimensions.width) * 100}%`;
+                                    const heightStyle = `${(spotHeight / mapDimensions.height) * 100}%`;
 
                                     return (
                                         <div

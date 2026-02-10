@@ -22,6 +22,7 @@ interface MapControlsProps {
     onFloorChange: (floor: number) => void;
     onDevModeToggle: () => void;
     isAdmin?: boolean;
+    className?: string;
 }
 
 export function MapControls({
@@ -33,6 +34,7 @@ export function MapControls({
     onFloorChange,
     onDevModeToggle,
     isAdmin = false,
+    className,
 }: MapControlsProps) {
     const activeZone = zones.find((z) => z.id === currentZoneId);
 
@@ -43,7 +45,10 @@ export function MapControls({
         : [0];
 
     return (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 bg-white/90 backdrop-blur-sm p-2 md:p-3 rounded-xl shadow-sm border border-slate-200 mb-2 md:mb-4 transition-all">
+        <div className={clsx(
+            "flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 bg-white/90 backdrop-blur-sm p-2 md:p-3 rounded-xl shadow-sm border border-slate-200 transition-all",
+            className
+        )}>
 
             {/* Zone Switcher */}
             <div className="flex items-center space-x-2 overflow-x-auto max-w-full pb-1 md:pb-0 scrollbar-hide">

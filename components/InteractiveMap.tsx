@@ -61,7 +61,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     };
 
     return (
-        <div className="relative w-full h-full bg-slate-200 rounded-xl overflow-hidden shadow-inner border border-slate-300 group">
+        <div className="relative w-full h-full bg-slate-200 md:rounded-xl overflow-hidden md:shadow-inner md:border md:border-slate-300 group">
             {/* Dev Mode Indicator */}
 
 
@@ -69,7 +69,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                 ref={ref}
                 limitToBounds={true}
                 minScale={1}
-                maxScale={4}
+                maxScale={8}
                 wheel={{ step: 0.1 }}
                 pinch={{ step: 5 }}
             >

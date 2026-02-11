@@ -35,6 +35,12 @@ export default function ProfilePage() {
 
     const RESERVATION_TIME_MS = 10 * 60 * 1000; // 10 minutes
 
+    const [stats, setStats] = useState({
+        totalSpots: 0,
+        activeReservations: 0,
+        totalUsers: 0
+    });
+
     const fetchProfileData = async () => {
         if (!userId) {
             setLoading(false);
@@ -51,6 +57,21 @@ export default function ProfilePage() {
 
             if (userError) throw userError;
             setProfile(userData);
+
+            // 1.5 Fetch Admin Stats if applicable
+            if (role === 'admin') {
+                const [spotsRes, usersRes, activeRes] = await Promise.all([
+                    supabase.from('spots').select('*', { count: 'exact', head: true }),
+                    supabase.from('users').select('*', { count: 'exact', head: true }),
+                    supabase.from('spots').select('*', { count: 'exact', head: true }).in('status', [1, 2])
+                ]);
+
+                setStats({
+                    totalSpots: spotsRes.count || 0,
+                    totalUsers: usersRes.count || 0,
+                    activeReservations: activeRes.count || 0
+                });
+            }
 
             // 2. Fetch Active Reservation (Strictly for this user)
             const { data: spotData, error: spotError } = await supabase
@@ -168,6 +189,23 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
+            {role === 'admin' && (
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+                        <p className="text-sm text-slate-500 font-medium">Total Spots</p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.totalSpots}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+                        <p className="text-sm text-slate-500 font-medium">Active Users</p>
+                        <p className="text-2xl font-bold text-blue-600">{stats.totalUsers}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+                        <p className="text-sm text-slate-500 font-medium">Occupied/Reserved</p>
+                        <p className="text-2xl font-bold text-purple-600">{stats.activeReservations}</p>
+                    </div>
+                </div>
+            )}
+
             <h1 className="text-3xl font-bold text-slate-800">My Profile</h1>
 
             {/* Profile Card */}
@@ -220,8 +258,8 @@ export default function ProfilePage() {
                     </div>
                 ) : (
                     <div className={`p-6 rounded-xl border shadow-sm transition-all ${spot.status === 1
-                            ? 'bg-purple-50 border-purple-200 shadow-purple-100'
-                            : 'bg-green-50 border-green-200 shadow-green-100'
+                        ? 'bg-purple-50 border-purple-200 shadow-purple-100'
+                        : 'bg-green-50 border-green-200 shadow-green-100'
                         }`}>
                         <div className="flex justify-between items-start mb-6">
                             <div>

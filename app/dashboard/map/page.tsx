@@ -402,13 +402,13 @@ export default function MapPage() {
                 </div>
 
                 {/* Find Nearest Button (Visible on all sizes) */}
+                {/* Find Nearest Button (Visible on all sizes) */}
                 <button
                     onClick={handleFindNearest}
-                    className="fixed top-3 right-14 z-50 md:static flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 md:px-6 md:py-2 rounded-lg md:rounded-xl font-bold shadow-lg shadow-blue-200 items-center space-x-2 transition-all hover:scale-105 active:scale-95 text-xs md:text-base"
+                    className="fixed top-3 right-14 z-50 md:static flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 md:px-6 md:py-2 rounded-full font-bold shadow-lg shadow-blue-200 items-center space-x-2 transition-all hover:scale-105 active:scale-95 text-xs md:text-base"
                 >
-                    <Navigation size={14} className="md:w-[18px] md:h-[18px]" />
-                    <span className="hidden xs:inline">Find Nearest</span>
-                    <span className="inline xs:hidden">Nearest</span>
+                    <Navigation size={16} className="md:w-[18px] md:h-[18px]" />
+                    <span>Find Nearest Spot</span>
                 </button>
             </div>{/* Admin Toolbar (Collapsible) */}
 

@@ -11,8 +11,8 @@ const universities = [
         id: 1,
         name: 'American University of the Middle East',
         location: 'Egaila, Kuwait',
-        image: '/images/aum-campus.jpg', // Placeholder, user will need to add this
-        logo: '/images/aum-logo.png',     // Placeholder
+        image: '/download.jpg',
+        logo: '/download.jpg',
         available: true,
     },
     // Add more here if needed
@@ -59,7 +59,12 @@ export default function DashboardPage() {
                                 </div>
 
                                 {/* If user adds image later */}
-                                {/* <Image src={uni.image} alt={uni.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" /> */}
+                                <Image
+                                    src={uni.image}
+                                    alt={uni.name}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
 
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
@@ -73,22 +78,10 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Content Section */}
-                            <div className="p-6 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    {/* Logo Placeholder */}
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold border border-slate-200">
-                                        logo
-                                    </div>
-                                    <div>
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            Partner
-                                        </span>
-                                    </div>
-                                </div>
-
+                            <div className="p-4 md:p-6 flex items-center justify-end">
                                 <Link
                                     href="/dashboard/map"
-                                    className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-slate-200"
+                                    className="w-full md:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-slate-200"
                                 >
                                     <span>View Parking</span>
                                     <ArrowRight size={18} />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { InteractiveMap } from '@/components/InteractiveMap';
 import { MapControls, ZoneData } from '@/components/MapControls';
 import { AddSpotModal } from '@/components/AddSpotModal';
@@ -12,6 +13,7 @@ import { clsx } from 'clsx';
 import { useUser } from '@/contexts/UserContext';
 
 export default function MapPage() {
+    const router = useRouter();
     const [zones, setZones] = useState<ZoneData[]>([]);
     const [currentZoneId, setCurrentZoneId] = useState<number | null>(null);
     const [currentFloor, setCurrentFloor] = useState(0);
@@ -303,9 +305,36 @@ export default function MapPage() {
 
     const updateSpotStatus = async (status: number) => {
         if (!selectedSpot || !userId) return;
+
+        // Check for existing reservation if trying to reserve (status 1)
+        if (status === 1) {
+            const { count, error: checkError } = await supabase
+                .from('spots')
+                .select('*', { count: 'exact', head: true })
+                .eq('reserved_by', userId)
+                .in('status', [1, 2]);
+
+            if (checkError) {
+                console.error('Error checking reservations:', checkError);
+                return;
+            }
+
+            if (count && count > 0) {
+                alert('You already have an active reservation or parked car. Please complete or cancel it first.');
+                return;
+            }
+        }
+
         const updates: any = { status };
-        if (status === 0) updates.reserved_by = null;
-        else updates.reserved_by = userId;
+        if (status === 0) {
+            updates.reserved_by = null;
+            updates.reserved_at = null;
+        } else {
+            updates.reserved_by = userId;
+            if (status === 1) {
+                updates.reserved_at = new Date().toISOString();
+            }
+        }
 
         // Optimistic Update
         updateSpot(selectedSpot.id, updates);
@@ -321,18 +350,25 @@ export default function MapPage() {
         if (error) {
             alert('Error updating spot: ' + error.message);
             // Revert would go here, but for now we rely on user refresh if it fails badly
+        } else {
+            if (status === 1) {
+                router.push('/dashboard/profile');
+            }
         }
     }
 
     const handleSpotMoveEnd = async (id: number, x: number, y: number) => {
         if (!userId || !adminMode) return;
 
+        const roundedX = Math.round(x);
+        const roundedY = Math.round(y);
+
         // Optimistic Update
-        updateSpot(id, { x_coord: x, y_coord: y });
+        updateSpot(id, { x_coord: roundedX, y_coord: roundedY });
 
         const { error } = await supabase
             .from('spots')
-            .update({ x_coord: x, y_coord: y })
+            .update({ x_coord: roundedX, y_coord: roundedY })
             .eq('id', id);
 
         if (error) {
@@ -365,26 +401,17 @@ export default function MapPage() {
                     </p>
                 </div>
 
-                {/* Desktop: Find Nearest Button */}
+                {/* Find Nearest Button (Visible on all sizes) */}
                 <button
                     onClick={handleFindNearest}
-                    className="hidden md:flex bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-200 items-center space-x-2 transition-all hover:scale-105 active:scale-95"
+                    className="flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 md:px-6 md:py-2 rounded-xl font-bold shadow-lg shadow-blue-200 items-center space-x-2 transition-all hover:scale-105 active:scale-95 text-xs md:text-base"
                 >
-                    <Navigation size={18} />
+                    <Navigation size={16} className="md:w-[18px] md:h-[18px]" />
                     <span>Find Nearest Spot</span>
                 </button>
             </div>
 
-            {/* Mobile: Floating Find Nearest Button (Only show if no spot selected) */}
-            {!selectedSpot && (
-                <button
-                    onClick={handleFindNearest}
-                    className="md:hidden absolute bottom-24 right-4 z-50 bg-blue-600 text-white p-4 rounded-full shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-transform"
-                    title="Find Nearest Spot"
-                >
-                    <Navigation size={24} />
-                </button>
-            )}
+            {/* Mobile: Floating Find Nearest Button REMOVED */}{/* Admin Toolbar (Collapsible) */}
 
             {/* Admin Toolbar (Collapsible) */}
             {role === 'admin' && adminMode && (
@@ -585,14 +612,24 @@ export default function MapPage() {
                                 <div className="space-y-2">
                                     <p className="text-[10px] md:text-xs text-center text-purple-600 font-medium bg-purple-50 py-1.5 md:py-2 rounded-lg border border-purple-100">Reserved for you</p>
                                     <div className="flex gap-2">
-                                        <button onClick={() => updateSpotStatus(2)} className="flex-1 py-2.5 md:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs md:text-sm shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2 active:scale-95"><Car size={16} /><span>Park Here</span></button>
-                                        <button onClick={() => updateSpotStatus(0)} className="flex-1 py-2.5 md:py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs md:text-sm font-bold transition-all active:scale-95">Cancel</button>
+                                        <p className="w-full text-center text-sm text-slate-500 italic">Please go to your profile to confirm or cancel this reservation.</p>
                                     </div>
                                 </div>
                             )}
 
                             {selectedSpot.status === 2 && (
-                                <button onClick={() => updateSpotStatus(0)} className="w-full py-2.5 md:py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-medium text-sm md:text-base shadow-xl transition-all active:scale-95">Leaving Spot (Make Free)</button>
+                                selectedSpot.reserved_by === userId ? (
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] md:text-xs text-center text-green-600 font-medium bg-green-50 py-1.5 md:py-2 rounded-lg border border-green-100">Occupied by you</p>
+                                        <div className="flex gap-2">
+                                            <p className="w-full text-center text-sm text-slate-500 italic">Go to your profile to leave this spot.</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <p className="w-full text-center text-sm text-slate-500 italic">This spot is currently occupied.</p>
+                                    </div>
+                                )
                             )}
 
                             {adminMode && (

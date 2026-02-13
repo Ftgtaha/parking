@@ -119,7 +119,7 @@ export default function DashboardPage() {
                                 <div className="flex items-center justify-between text-sm">
                                     {/* Rating Removed as per request */}
                                     <div className="text-slate-500 font-medium w-full text-right">
-                                        <span className="text-slate-900 font-bold text-lg">{totalSpots}</span> Total Spots
+                                        <span className="text-slate-900 font-bold text-lg">{totalSpots}</span> Total Active Spots
                                     </div>
                                 </div>
 

@@ -45,7 +45,7 @@ export function AddSpotModal({
     return (
         <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
             <div
-                className="w-full sm:max-w-md bg-white/95 sm:bg-white/80 backdrop-blur-xl border-t sm:border border-white/40 shadow-2xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 relative overflow-hidden transition-all animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95"
+                className="w-full sm:max-w-md bg-white/95 sm:bg-white/80 backdrop-blur-xl border-t sm:border border-white/40 shadow-2xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 relative overflow-hidden transition-all animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Decorative background blob */}
@@ -121,6 +121,8 @@ export function AddSpotModal({
                                 ))}
                             </div>
                         </div>
+
+
 
                         {errorMessage && (
                             <div className="p-3 bg-red-100 border border-red-200 text-red-700 text-xs sm:text-sm rounded-xl font-medium">

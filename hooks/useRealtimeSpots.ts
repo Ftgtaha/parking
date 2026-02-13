@@ -12,6 +12,9 @@ export type Spot = {
     x_coord: number;
     y_coord: number;
     reserved_by?: string | null;
+    width?: number;
+    height?: number;
+    rotation?: number;
 };
 
 export function useRealtimeSpots(zoneId?: number) {

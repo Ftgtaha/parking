@@ -13,7 +13,7 @@ interface InteractiveMapProps {
     devMode: boolean;
     onSpotClick?: (spot: Spot) => void;
     onMapClick?: (x: number, y: number) => void;
-    tempSpot?: { x_coord: number; y_coord: number; floor_level: number } | null;
+    tempSpot?: { x_coord: number; y_coord: number; floor_level: number; width?: number; height?: number; rotation?: number } | null;
     selectedSpotId?: number | null;
     gate?: { x: number; y: number } | null;
     onGateClick?: () => void;
@@ -179,8 +179,12 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                 {mapDimensions && floorSpots.map((spot) => {
                                     // Calculate relative size based on the specific image's natural dimensions
                                     // accurately representing "pixels on the image"
-                                    const widthStyle = `${(spotWidth / mapDimensions.width) * 100}%`;
-                                    const heightStyle = `${(spotHeight / mapDimensions.height) * 100}%`;
+                                    const sWidth = (spot as any).width || spotWidth;
+                                    const sHeight = (spot as any).height || spotHeight;
+                                    const sRotation = (spot as any).rotation || 0;
+
+                                    const widthStyle = `${(sWidth / mapDimensions.width) * 100}%`;
+                                    const heightStyle = `${(sHeight / mapDimensions.height) * 100}%`;
 
                                     const isDragging = draggedSpot?.id === spot.id;
                                     const x = isDragging && currentDragPos ? currentDragPos.x : spot.x_coord;
@@ -204,7 +208,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                                 if (!isDragging) onSpotClick?.(spot);
                                             }}
                                             className={clsx(
-                                                "absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300",
+                                                "absolute cursor-pointer transition-all duration-300",
                                                 "flex items-center justify-center rounded-md shadow-md z-10",
                                                 // Highlight Selected Spot
                                                 selectedSpotId === spot.id ? "z-50 ring-4 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
@@ -220,6 +224,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                                 top: `${y}%`,
                                                 width: widthStyle,
                                                 height: heightStyle,
+                                                transform: `translate(-50%, -50%) rotate(${sRotation}deg)`,
                                                 touchAction: 'none', // Critical for dragging on touch devices without scrolling page
                                             }}
                                             title={`Spot: ${spot.spot_number} (${spot.status === 0 ? 'Free' : spot.status === 1 ? 'Reserved' : 'Occupied'})`}
@@ -240,16 +245,19 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                 })}
 
                                 {/* Ghost Marker (Temp Spot) */}
-                                {tempSpot && tempSpot.floor_level === activeFloor && (
+                                {tempSpot && tempSpot.floor_level === activeFloor && mapDimensions && (
                                     <div
-                                        className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none animate-bounce"
+                                        className="absolute z-60 pointer-events-none"
                                         style={{
                                             left: `${tempSpot.x_coord}%`,
                                             top: `${tempSpot.y_coord}%`,
+                                            width: `${((tempSpot.width || spotWidth) / mapDimensions.width) * 100}%`,
+                                            height: `${((tempSpot.height || spotHeight) / mapDimensions.height) * 100}%`,
+                                            transform: `translate(-50%, -50%) rotate(${tempSpot.rotation || 0}deg)`,
                                         }}
                                     >
-                                        <div className="w-8 h-8 bg-blue-500/50 border-2 border-blue-400 rounded-full flex items-center justify-center backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                                            <div className="w-3 h-3 bg-blue-100 rounded-full animate-ping" />
+                                        <div className="w-full h-full bg-blue-500/40 border-2 border-dashed border-white rounded shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse flex items-center justify-center">
+                                            <div className="w-2 h-2 bg-white rounded-full"></div>
                                         </div>
                                     </div>
                                 )}

@@ -36,6 +36,7 @@ export default function MapPage() {
     // Spot Config State
     const [spotWidth, setSpotWidth] = useState(60);
     const [spotHeight, setSpotHeight] = useState(100);
+    const [spotRotation, setSpotRotation] = useState(0);
     const [isSavingConfig, setIsSavingConfig] = useState(false);
 
     const mapRef = useRef<ReactZoomPanPinchRef>(null);
@@ -96,6 +97,7 @@ export default function MapPage() {
                 // We use || to fallback if 0 somehow or null
                 setSpotWidth(zone.spot_width || 60);
                 setSpotHeight(zone.spot_height || 100);
+                setSpotRotation(0);
             }
         }
     }, [currentZoneId, zones]);
@@ -146,37 +148,80 @@ export default function MapPage() {
     // --- Actions ---
 
     // Save Spot Config
+    // Save Spot Config (Context Aware)
     const handleSaveSpotConfig = async () => {
-        if (!currentZoneId) return;
         setIsSavingConfig(true);
-        const { error } = await supabase
-            .from('zones')
-            .update({
-                spot_width: spotWidth,
-                spot_height: spotHeight
-            })
-            .eq('id', currentZoneId);
 
-        setIsSavingConfig(false);
+        if (selectedSpot) {
+            // Save to Specific Spot
+            const { error } = await supabase
+                .from('spots')
+                .update({
+                    width: spotWidth,
+                    height: spotHeight
+                })
+                .eq('id', selectedSpot.id);
 
-        if (error) {
-            // Helper to auto-fix schema if missing
-            if (error.message?.includes('column "spot_width" of relation "zones" does not exist')) {
-                alert('Database schema is missing "spot_width/height". Please ask developer to run update_zones_schema.sql');
+            if (error) {
+                alert('Error saving spot size: ' + error.message);
             } else {
-                alert('Error saving config: ' + error.message);
+                // Update local selectedSpot with new dims to prevent "jumping" back
+                setSelectedSpot({ ...selectedSpot, width: spotWidth, height: spotHeight });
+                alert('Spot size updated!');
             }
         } else {
-            // Update local state for zones to reflect changes without reload
-            setZones(prev => prev.map(z => z.id === currentZoneId ? { ...z, spot_width: spotWidth, spot_height: spotHeight } : z));
-            alert('Spot settings saved!');
+            // Save to Zone Defaults
+            if (!currentZoneId) return;
+            const { error } = await supabase
+                .from('zones')
+                .update({
+                    spot_width: spotWidth,
+                    spot_height: spotHeight
+                })
+                .eq('id', currentZoneId);
+
+            if (error) {
+                if (error.message?.includes('column "spot_width" of relation "zones" does not exist')) {
+                    alert('Database schema is missing columns. Please ask developer to fix.');
+                } else {
+                    alert('Error saving config: ' + error.message);
+                }
+            } else {
+                setZones(prev => prev.map(z => z.id === currentZoneId ? { ...z, spot_width: spotWidth, spot_height: spotHeight } : z));
+                alert('Zone default spot settings saved!');
+            }
         }
+        setIsSavingConfig(false);
     };
 
     // Rotate Spot
+    // Rotate Spot
     const handleRotateSpot = () => {
-        setSpotWidth(spotHeight);
-        setSpotHeight(spotWidth);
+        // Swap dimensions
+        const newW = spotHeight;
+        const newH = spotWidth;
+        setSpotWidth(newW);
+        setSpotHeight(newH);
+
+        // Instant update if spot selected
+        if (selectedSpot) {
+            updateSpot(selectedSpot.id, { width: newW, height: newH });
+        }
+    };
+
+    const handleRotationChange = (val: number) => {
+        setSpotRotation(val);
+        if (selectedSpot) updateSpot(selectedSpot.id, { rotation: val });
+    };
+
+    const handleWidthChange = (val: number) => {
+        setSpotWidth(val);
+        if (selectedSpot) updateSpot(selectedSpot.id, { width: val });
+    };
+
+    const handleHeightChange = (val: number) => {
+        setSpotHeight(val);
+        if (selectedSpot) updateSpot(selectedSpot.id, { height: val });
     };
 
     const handleFindNearest = () => {
@@ -219,6 +264,11 @@ export default function MapPage() {
 
     const handleSpotSelect = (spot: Spot) => {
         setSelectedSpot(spot);
+        // Sync sliders to this spot's dims
+        setSpotWidth(spot.width || activeZone?.spot_width || 60);
+        setSpotHeight(spot.height || activeZone?.spot_height || 100);
+        setSpotRotation(spot.rotation || 0);
+
         if (mapRef.current) {
             const node = document.getElementById(`spot-${spot.id}`);
             if (node) {
@@ -226,6 +276,16 @@ export default function MapPage() {
             } else {
                 mapRef.current.centerView(1.5, 500, "easeInOutQuad");
             }
+        }
+    };
+
+    const handleSpotDeselect = () => {
+        setSelectedSpot(null);
+        // Revert sliders to Zone Defaults
+        if (activeZone) {
+            setSpotWidth(activeZone.spot_width || 60);
+            setSpotHeight(activeZone.spot_height || 100);
+            setSpotRotation(0);
         }
     };
 
@@ -265,6 +325,7 @@ export default function MapPage() {
         }
 
         setStartSpot({ x, y });
+        // NOTE: We do NOT reset dimensions here. context-aware sliders determine new spot size.
         setSaveError(null);
         setIsAddMode(true);
     };
@@ -284,6 +345,9 @@ export default function MapPage() {
                     status,
                     x_coord: Math.round(startSpot.x),
                     y_coord: Math.round(startSpot.y),
+                    width: spotWidth,
+                    height: spotHeight,
+                    rotation: spotRotation
                 }
             ])
             .select()
@@ -465,7 +529,9 @@ export default function MapPage() {
                                             <Layers size={18} />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-slate-800 text-sm md:text-base">Spot Size</h4>
+                                            <h4 className="font-bold text-slate-800 text-sm md:text-base">
+                                                {selectedSpot ? `Spot ${selectedSpot.spot_number} Size` : 'Zone Default Size'}
+                                            </h4>
                                         </div>
                                     </div>
 
@@ -477,9 +543,9 @@ export default function MapPage() {
                                             </div>
                                             <input
                                                 type="range"
-                                                min="5" max="150" step="1"
+                                                min="20" max="300" step="5"
                                                 value={spotWidth}
-                                                onChange={(e) => setSpotWidth(Number(e.target.value))}
+                                                onChange={(e) => handleWidthChange(Number(e.target.value))}
                                                 className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                                             />
                                         </div>
@@ -490,9 +556,9 @@ export default function MapPage() {
                                             </div>
                                             <input
                                                 type="range"
-                                                min="5" max="150" step="1"
+                                                min="20" max="300" step="5"
                                                 value={spotHeight}
-                                                onChange={(e) => setSpotHeight(Number(e.target.value))}
+                                                onChange={(e) => handleHeightChange(Number(e.target.value))}
                                                 className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                                             />
                                         </div>
@@ -546,7 +612,14 @@ export default function MapPage() {
                     devMode={adminMode}
                     onSpotClick={handleSpotSelect}
                     onMapClick={handleMapClick}
-                    tempSpot={startSpot ? { x_coord: startSpot.x, y_coord: startSpot.y, floor_level: currentFloor } : null}
+                    tempSpot={startSpot ? {
+                        x_coord: startSpot.x,
+                        y_coord: startSpot.y,
+                        floor_level: currentFloor,
+                        width: spotWidth,
+                        height: spotHeight,
+                        rotation: spotRotation
+                    } : null}
                     selectedSpotId={selectedSpot?.id}
                     gate={gateLocation}
                     onGateClick={() => adminMode && handleRemoveGate()}
@@ -577,7 +650,7 @@ export default function MapPage() {
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selected Spot</span>
                                 <h3 className="text-xl md:text-3xl font-black text-slate-800">{selectedSpot.spot_number}</h3>
                             </div>
-                            <button onClick={() => setSelectedSpot(null)} className="p-1.5 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                            <button onClick={handleSpotDeselect} className="p-1.5 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                                 <ChevronDown className="md:hidden" size={20} />
                                 <XCircle className="hidden md:block" size={24} />
                             </button>

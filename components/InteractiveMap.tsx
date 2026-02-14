@@ -15,6 +15,7 @@ interface InteractiveMapProps {
     onMapClick?: (x: number, y: number) => void;
     tempSpot?: { x_coord: number; y_coord: number; floor_level: number; width?: number; height?: number; rotation?: number } | null;
     selectedSpotId?: number | null;
+    selectedSpotIds?: number[]; // Multi-select support
     gates?: { id: number; x: number; y: number; name: string }[];
     selectedGateId?: number | null;
     onGateClick?: (gateId: number) => void;
@@ -32,6 +33,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     onMapClick,
     tempSpot,
     selectedSpotId,
+    selectedSpotIds = [],
     gates = [],
     selectedGateId,
     onGateClick,
@@ -213,8 +215,8 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                             className={clsx(
                                                 "absolute cursor-pointer transition-all duration-300",
                                                 "flex items-center justify-center rounded-none shadow-md z-10",
-                                                // Highlight Selected Spot
-                                                selectedSpotId === spot.id ? "z-50 ring-1 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
+                                                // Highlight Selected Spot (Single or Multi)
+                                                (selectedSpotId === spot.id || selectedSpotIds.includes(spot.id)) ? "z-50 ring-1 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
                                                 // Status Colors with Pulse for Reserved/Occupied
                                                 spot.status === 0 ? "bg-green-500 border border-white" : "",
                                                 spot.status === 1 ? "bg-purple-600 border border-white animate-pulse" : "",

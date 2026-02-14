@@ -43,6 +43,10 @@ export default function MapPage() {
     const [spotRotation, setSpotRotation] = useState(0);
     const [isSavingConfig, setIsSavingConfig] = useState(false);
 
+    // Multi-Select State
+    const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+    const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
+
     const mapRef = useRef<ReactZoomPanPinchRef>(null);
     const { spots, loading: spotsLoading, status, updateSpot, addSpot, removeSpot } = useRealtimeSpots();
 
@@ -348,6 +352,18 @@ export default function MapPage() {
     };
 
     const handleSpotSelect = (spot: Spot) => {
+        if (isMultiSelectMode) {
+            setSelectedSpotIds(prev => {
+                if (prev.includes(spot.id)) {
+                    return prev.filter(id => id !== spot.id);
+                }
+                return [...prev, spot.id];
+            });
+            // Clear single select to avoid confusion
+            setSelectedSpot(null);
+            return;
+        }
+
         setSelectedSpot(spot);
         // Sync sliders to this spot's dims
         // We only do this ONCE when selecting the spot.
@@ -362,6 +378,34 @@ export default function MapPage() {
             } else {
                 mapRef.current.centerView(1.5, 500, "easeInOutQuad");
             }
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedSpotIds.length === 0) return;
+
+        if (!confirm(`Are you sure you want to delete ${selectedSpotIds.length} selected spots? This cannot be undone.`)) {
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const { error } = await supabase
+                .from('spots')
+                .delete()
+                .in('id', selectedSpotIds);
+
+            if (error) throw error;
+
+            // UI update handled by realtime subscription usually, but we can force clear
+            setSelectedSpotIds([]);
+            setIsMultiSelectMode(false); // Optional: exit mode after delete
+            alert('Spots deleted successfully!');
+        } catch (err: any) {
+            console.error('Bulk Delete Error:', err);
+            alert('Failed to delete spots: ' + err.message);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -708,6 +752,31 @@ export default function MapPage() {
 
                         {showAdminPanel && (
                             <div className="space-y-4 animate-in slide-in-from-top-5 max-h-[60vh] overflow-y-auto md:max-h-none md:overflow-visible custom-scrollbar bg-white/95 md:bg-transparent p-2 rounded-xl shadow-2xl md:shadow-none md:p-0 backdrop-blur-md border border-slate-200/50">
+                                {/* Bulk Actions Toolbar */}
+                                <div className="bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-white/50 w-full max-w-lg mx-auto">
+                                    <div className="flex gap-2 items-center justify-center mb-4 border-b border-slate-100 pb-4">
+                                        <button
+                                            onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+                                            className={clsx(
+                                                "px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2",
+                                                isMultiSelectMode ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-300" : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+                                            )}
+                                        >
+                                            <Copy size={14} />
+                                            {isMultiSelectMode ? 'Done Selecting' : 'Select Multiple'}
+                                        </button>
+
+                                        {isMultiSelectMode && selectedSpotIds.length > 0 && (
+                                            <button
+                                                onClick={handleBulkDelete}
+                                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold text-xs shadow-lg animate-in fade-in flex items-center gap-2"
+                                            >
+                                                <XCircle size={14} />
+                                                Delete ({selectedSpotIds.length})
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                                 {/* Top Bar with Gate/Actions */}
                                 <div className="p-3 md:p-4 bg-slate-800 rounded-xl text-white flex gap-3 md:gap-4 items-center flex-wrap shadow-lg">
                                     <span className="font-mono text-green-400 font-bold text-sm md:text-base">ADMIN</span>
@@ -850,8 +919,10 @@ export default function MapPage() {
                     selectedGateId={selectedGateId}
                     onGateClick={(id) => setSelectedGateId(id)}
                     onSpotMoveEnd={handleSpotMoveEnd}
+
                     spotWidth={spotWidth}
                     spotHeight={spotHeight}
+                    selectedSpotIds={selectedSpotIds}
                 />
 
                 {/* --- Add Spot Modal --- */}

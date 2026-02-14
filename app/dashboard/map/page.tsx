@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { InteractiveMap } from '@/components/InteractiveMap';
 import { MapControls, ZoneData } from '@/components/MapControls';
 import { AddSpotModal } from '@/components/AddSpotModal';
+import { GateSelectionModal } from '@/components/GateSelectionModal';
 import { useRealtimeSpots, Spot } from '@/hooks/useRealtimeSpots';
 import { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 import { supabase } from '@/lib/supabaseClient';
-import { MapPin, ZoomIn, ZoomOut, User, Navigation, LogOut, Loader2, DoorOpen, XCircle, CheckCircle2, Layers, ChevronDown, ChevronUp, Car } from 'lucide-react';
+import { MapPin, ZoomIn, ZoomOut, User, Navigation, LogOut, Loader2, DoorOpen, XCircle, CheckCircle2, Layers, ChevronDown, ChevronUp, Car, Copy } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useUser } from '@/contexts/UserContext';
 
@@ -30,8 +31,11 @@ export default function MapPage() {
     const [saveError, setSaveError] = useState<string | null>(null);
 
     // Gate configuration
-    const [gateLocation, setGateLocation] = useState<{ x: number, y: number } | null>(null);
+    const [gates, setGates] = useState<{ id: number; x: number; y: number; name: string }[]>([]);
+    const [selectedGateId, setSelectedGateId] = useState<number | null>(null);
     const [isSetGateMode, setIsSetGateMode] = useState(false);
+    const [gateNameInput, setGateNameInput] = useState('');
+    const [isGateModalOpen, setIsGateModalOpen] = useState(false);
 
     // Spot Config State
     const [spotWidth, setSpotWidth] = useState(60);
@@ -94,48 +98,114 @@ export default function MapPage() {
             const zone = zones.find(z => z.id === currentZoneId);
             if (zone) {
                 // If the DB has values, use them. Otherwise default.
-                // We use || to fallback if 0 somehow or null
-                setSpotWidth(zone.spot_width || 60);
-                setSpotHeight(zone.spot_height || 100);
-                setSpotRotation(0);
+                // Only set these if NO spot is selected, otherwise we might overwrite spot editing
+                if (!selectedSpot) {
+                    setSpotWidth(zone.spot_width || 60);
+                    setSpotHeight(zone.spot_height || 100);
+                }
             }
         }
-    }, [currentZoneId, zones]);
+    }, [currentZoneId, zones, selectedSpot]); // added selectedSpot dependency to prevent overwrite
 
-    // Fetch Gate Location when zone changes
+    // Sync selectedSpot with realtime data
+    useEffect(() => {
+        if (selectedSpot) {
+            const updated = spots.find(s => s.id === selectedSpot.id);
+            if (updated) {
+                // We only update the non-dimensional properties to avoid jitter/reset while editing
+                // OR we can update everything but we must safeguard the slider state.
+                // actually, if we are dragging the slider, the local state (spotWidth) is the source of truth.
+                // The realtime update might bring in the "old" width before our save commits.
+                // So we should NOT update selectedSpot's width/height from realtime while we are editing?
+                // For now, let's just keep selectedSpot fresh but NOT reset sliders.
+                setSelectedSpot(updated);
+            } else {
+                // Spot deleted?
+                setSelectedSpot(null);
+            }
+        }
+
+    }, [spots]);
+
+    // Keyboard controls for moving selected spot
+    useEffect(() => {
+        if (!selectedSpot || !adminMode) return;
+
+        const handleKeyDown = async (e: KeyboardEvent) => {
+            // Ignore if typing in an input
+            if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+
+            const step = e.shiftKey ? 1.0 : 0.1; // Shift for faster movement
+            let dx = 0;
+            let dy = 0;
+
+            switch (e.key) {
+                case 'ArrowUp': dy = -step; break;
+                case 'ArrowDown': dy = step; break;
+                case 'ArrowLeft': dx = -step; break;
+                case 'ArrowRight': dx = step; break;
+                default: return; // Exit if not an arrow key
+            }
+
+            e.preventDefault(); // Prevent scrolling
+
+            // Calculate new coords
+            const newX = Math.round((selectedSpot.x_coord + dx) * 100) / 100;
+            const newY = Math.round((selectedSpot.y_coord + dy) * 100) / 100;
+
+            // Optimistic update
+            updateSpot(selectedSpot.id, { x_coord: newX, y_coord: newY });
+
+            // Persist to DB (Debouncing would be better but this is simple for now)
+            const { error } = await supabase
+                .from('spots')
+                .update({ x_coord: newX, y_coord: newY })
+                .eq('id', selectedSpot.id);
+
+            if (error) console.error("Move error:", error);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedSpot, adminMode]);
+
+    // We use || to fallback if 0 somehow or null
+    // This logic handles initial zone load defaults
+
+
+
+
+    // Fetch Gates when zone changes
     useEffect(() => {
         if (!currentZoneId) {
-            setGateLocation(null);
+            setGates([]);
+            setSelectedGateId(null);
             return;
         }
 
-        // Find in local state first if we have full data, otherwise fetch
-        const zone = zones.find(z => z.id === currentZoneId);
-        // We might need to fetch fresh gate coords if they change, but for now local state is okay 
-        // IF we updated the local state on change.
-        // Better to fetch specific gate coords to ensure freshness or use Realtime for zones too.
-        // For simplicity, let's fetch fresh gate coords.
-        const fetchGate = async () => {
+        const fetchGates = async () => {
             const { data, error } = await supabase
-                .from('zones')
-                .select('gate_x, gate_y, spot_width, spot_height')
-                .eq('id', currentZoneId)
-                .single();
+                .from('gates')
+                .select('*')
+                .eq('zone_id', currentZoneId)
+                .order('id', { ascending: true });
 
             if (data) {
-                if (data.gate_x && data.gate_y) {
-                    setGateLocation({ x: data.gate_x, y: data.gate_y });
-                } else {
-                    setGateLocation(null);
-                }
-
-                // Also ensuring we have freshest dimensions
-                if (data.spot_width) setSpotWidth(data.spot_width);
-                if (data.spot_height) setSpotHeight(data.spot_height);
+                setGates(data.map(g => ({ id: g.id, x: g.x_coord, y: g.y_coord, name: g.name })));
+            } else if (error) {
+                console.error('Error fetching gates:', error);
             }
         };
-        fetchGate();
-    }, [currentZoneId, zones]); // Included zones in dep to re-run if zones refresh
+
+        fetchGates();
+
+        // Also ensure spot dims are fresh (from existing logic)
+        const zone = zones.find(z => z.id === currentZoneId);
+        if (zone) {
+            if (zone.spot_width) setSpotWidth(zone.spot_width);
+            if (zone.spot_height) setSpotHeight(zone.spot_height);
+        }
+    }, [currentZoneId, zones]);
 
     // Derived active zone
     const activeZone = zones.find(z => z.id === currentZoneId);
@@ -144,6 +214,13 @@ export default function MapPage() {
     const zoneSpots = useMemo(() => {
         return spots.filter((s) => s.zone_id === currentZoneId);
     }, [spots, currentZoneId]);
+
+    // Auto-select single gate
+    useEffect(() => {
+        if (gates.length === 1 && !selectedGateId) {
+            setSelectedGateId(gates[0].id);
+        }
+    }, [gates, selectedGateId]);
 
     // --- Actions ---
 
@@ -225,10 +302,18 @@ export default function MapPage() {
     };
 
     const handleFindNearest = () => {
-        if (!gateLocation) {
-            alert('Gate location not set! Please ask an admin to set the entrance.');
+        if (gates.length === 0) {
+            alert('No entrances found! Please ask an admin to set an entrance.');
             return;
         }
+
+        if (!selectedGateId) {
+            setIsGateModalOpen(true);
+            return;
+        }
+
+        const selectedGate = gates.find(g => g.id === selectedGateId);
+        if (!selectedGate) return;
 
         const availableSpots = zoneSpots.filter(s => s.status === 0);
 
@@ -245,8 +330,8 @@ export default function MapPage() {
                 // Prefer lower floors (closer to exit usually)
                 return a.floor_level - b.floor_level;
             }
-            const distA = Math.hypot(a.x_coord - gateLocation.x, a.y_coord - gateLocation.y);
-            const distB = Math.hypot(b.x_coord - gateLocation.x, b.y_coord - gateLocation.y);
+            const distA = Math.hypot(a.x_coord - selectedGate.x, a.y_coord - selectedGate.y);
+            const distB = Math.hypot(b.x_coord - selectedGate.x, b.y_coord - selectedGate.y);
             return distA - distB;
         });
 
@@ -265,6 +350,7 @@ export default function MapPage() {
     const handleSpotSelect = (spot: Spot) => {
         setSelectedSpot(spot);
         // Sync sliders to this spot's dims
+        // We only do this ONCE when selecting the spot.
         setSpotWidth(spot.width || activeZone?.spot_width || 60);
         setSpotHeight(spot.height || activeZone?.spot_height || 100);
         setSpotRotation(spot.rotation || 0);
@@ -289,37 +375,137 @@ export default function MapPage() {
         }
     };
 
-    const handleRemoveGate = async () => {
+    const handleRemoveGate = async (id: number) => {
         if (!currentZoneId) return;
-        if (confirm('Permanently remove the entrance for this zone/floor?')) {
+        if (confirm('Permanently remove this entrance?')) {
             const { error } = await supabase
-                .from('zones')
-                .update({ gate_x: null, gate_y: null })
-                .eq('id', currentZoneId);
+                .from('gates')
+                .delete()
+                .eq('id', id);
 
             if (error) {
                 alert('Error removing gate: ' + error.message);
             } else {
-                setGateLocation(null);
-                alert('Entrance removed successfully.');
+                setGates(prev => prev.filter(g => g.id !== id));
+                if (selectedGateId === id) setSelectedGateId(null);
             }
+        }
+    };
+
+    const handleCopyLayout = async () => {
+        if (!currentZoneId || !activeZone) return;
+
+        // confirm with user
+        if (!confirm(`Are you sure you want to copy the layout from Floor ${currentFloor === 0 ? 'G' : currentFloor} to ALL other floors in this building?\n\nThis will DELETE existing spots on other floors and replace them.`)) {
+            return;
+        }
+
+        setIsSaving(true);
+
+        try {
+            // 1. Get spots on current floor
+            const sourceSpots = spots.filter(s => s.zone_id === currentZoneId && s.floor_level === currentFloor);
+
+            if (sourceSpots.length === 0) {
+                alert('No spots to copy on this floor.');
+                setIsSaving(false);
+                return;
+            }
+
+            // 2. Loop through all floors
+            const totalFloors = activeZone.total_floors || 1; // Default to 1 if not set
+            const targetFloors = [];
+
+            for (let f = 0; f < totalFloors; f++) {
+                if (f !== currentFloor) targetFloors.push(f);
+            }
+
+            if (targetFloors.length === 0) {
+                alert('No other floors to copy to.');
+                setIsSaving(false);
+                return;
+            }
+
+            // 3. Delete existing spots on target floors
+            const { error: deleteError } = await supabase
+                .from('spots')
+                .delete()
+                .eq('zone_id', currentZoneId)
+                .in('floor_level', targetFloors);
+
+            if (deleteError) throw deleteError;
+
+            // 4. Prepare new spots
+            const newSpots: any[] = [];
+
+            targetFloors.forEach(floor => {
+                sourceSpots.forEach(spot => {
+                    // Cleaner name generation: 
+                    // If spot is "A1", on floor 2 it becomes "A1-F2"
+                    // If spot is already "A1-F0", strip suffix first? 
+                    // check if spot number already has a -F suffix
+                    let baseName = spot.spot_number;
+                    const suffixRegex = /-F\d+$/;
+                    if (suffixRegex.test(baseName)) {
+                        baseName = baseName.replace(suffixRegex, '');
+                    }
+
+                    newSpots.push({
+                        zone_id: currentZoneId,
+                        spot_number: `${baseName}-F${floor === 0 ? 'G' : floor}`, // -F2, -FG
+                        floor_level: floor,
+                        x_coord: spot.x_coord,
+                        y_coord: spot.y_coord,
+                        width: spot.width,
+                        height: spot.height,
+                        rotation: spot.rotation,
+                        status: 0, // Always available
+
+                    });
+                });
+            });
+
+            // 5. Insert new spots
+            const { error: insertError } = await supabase
+                .from('spots')
+                .insert(newSpots);
+
+            if (insertError) throw insertError;
+
+            alert(`Successfully copied layout to ${targetFloors.length} floors!`);
+            // Realtime subscription should handle updating the UI for other floors when we switch
+
+        } catch (err: any) {
+            console.error('Copy Layout Error:', err);
+            alert('Failed to copy layout: ' + err.message);
+        } finally {
+            setIsSaving(false);
         }
     };
 
     // Admin Interactions
     const handleMapClick = async (x: number, y: number) => {
         if (isSetGateMode && currentZoneId) {
-            const { error } = await supabase
-                .from('zones')
-                .update({ gate_x: Math.round(x), gate_y: Math.round(y) })
-                .eq('id', currentZoneId);
+            const name = prompt("Enter name for this entrance (e.g., Gate A):", "New Gate");
+            if (!name) return;
+
+            const { data, error } = await supabase
+                .from('gates')
+                .insert([{
+                    zone_id: currentZoneId,
+                    name: name,
+                    x_coord: Math.round(x),
+                    y_coord: Math.round(y)
+                }])
+                .select()
+                .single();
 
             if (error) {
-                alert('Failed to set gate: ' + error.message);
-            } else {
-                setGateLocation({ x: Math.round(x), y: Math.round(y) });
+                alert('Failed to add gate: ' + error.message);
+            } else if (data) {
+                setGates(prev => [...prev, { id: data.id, x: data.x_coord, y: data.y_coord, name: data.name }]);
                 setIsSetGateMode(false);
-                alert('Gate Location Updated Successfully!');
+                alert('Gate Added Successfully!');
             }
             return;
         }
@@ -465,14 +651,41 @@ export default function MapPage() {
                     </p>
                 </div>
 
-                {/* Find Nearest Button (Visible on all sizes) */}
-                {/* Find Nearest Button (Visible on all sizes) */}
+                {/* Selected Gate Indicator (Mobile/Desktop) */}
+                {selectedGateId && !adminMode && (
+                    <div
+                        onClick={() => setIsGateModalOpen(true)}
+                        className="hidden md:flex flex-col items-end mr-4 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Entrance</span>
+                        <div className="flex items-center gap-1 text-slate-700 font-bold">
+                            <DoorOpen size={16} className="text-blue-600" />
+                            <span>{gates.find(g => g.id === selectedGateId)?.name}</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Find Nearest Button (Smart Context) */}
                 <button
-                    onClick={handleFindNearest}
-                    className="fixed top-3 right-14 z-50 md:static flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 md:px-6 md:py-2 rounded-full font-bold shadow-lg shadow-blue-200 items-center space-x-2 transition-all hover:scale-105 active:scale-95 text-xs md:text-base"
+                    onClick={selectedGateId ? handleFindNearest : () => setIsGateModalOpen(true)}
+                    className={clsx(
+                        "fixed top-3 right-14 z-50 md:static flex px-4 py-2 md:px-6 md:py-2 rounded-full font-bold shadow-lg items-center space-x-2 transition-all hover:scale-105 active:scale-95 text-xs md:text-base",
+                        selectedGateId
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200"
+                            : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 animate-pulse"
+                    )}
                 >
-                    <Navigation size={16} className="md:w-[18px] md:h-[18px]" />
-                    <span>Find Nearest Spot</span>
+                    {selectedGateId ? (
+                        <>
+                            <Navigation size={16} className="md:w-[18px] md:h-[18px]" />
+                            <span>Find Nearest Spot</span>
+                        </>
+                    ) : (
+                        <>
+                            <DoorOpen size={16} className="md:w-[18px] md:h-[18px]" />
+                            <span>Select Entrance</span>
+                        </>
+                    )}
                 </button>
             </div>{/* Admin Toolbar (Collapsible) */}
 
@@ -499,6 +712,16 @@ export default function MapPage() {
                                     <div className="h-4 w-px bg-slate-600 mx-1 md:h-6 md:mx-2"></div>
 
                                     <button
+                                        onClick={handleCopyLayout}
+                                        disabled={isSaving}
+                                        className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold transition-all flex items-center gap-2 text-xs md:text-sm disabled:opacity-50"
+                                        title="Copy current floor layout to all other floors"
+                                    >
+                                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
+                                        <span className="hidden md:inline">Copy Layout</span>
+                                    </button>
+
+                                    <button
                                         onClick={() => setIsSetGateMode(!isSetGateMode)}
                                         className={clsx(
                                             "px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-xs md:text-sm",
@@ -508,16 +731,16 @@ export default function MapPage() {
                                         )}
                                     >
                                         <DoorOpen size={16} />
-                                        {isSetGateMode ? 'Set Entrance' : 'Set Entrance'}
+                                        {isSetGateMode ? 'Click Map to Add Gate' : 'Add Entrance'}
                                     </button>
 
-                                    {gateLocation && (
+                                    {selectedGateId && (
                                         <button
-                                            onClick={handleRemoveGate}
+                                            onClick={() => handleRemoveGate(selectedGateId)}
                                             className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-lg text-xs md:text-sm font-semibold border border-red-800 transition-all flex items-center gap-2"
                                         >
                                             <XCircle size={14} />
-                                            Remove
+                                            Remove Selected Gate
                                         </button>
                                     )}
                                 </div>
@@ -543,7 +766,7 @@ export default function MapPage() {
                                             </div>
                                             <input
                                                 type="range"
-                                                min="20" max="300" step="5"
+                                                min="15" max="300" step="1"
                                                 value={spotWidth}
                                                 onChange={(e) => handleWidthChange(Number(e.target.value))}
                                                 className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
@@ -556,7 +779,7 @@ export default function MapPage() {
                                             </div>
                                             <input
                                                 type="range"
-                                                min="20" max="300" step="5"
+                                                min="15" max="300" step="1"
                                                 value={spotHeight}
                                                 onChange={(e) => handleHeightChange(Number(e.target.value))}
                                                 className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
@@ -621,8 +844,9 @@ export default function MapPage() {
                         rotation: spotRotation
                     } : null}
                     selectedSpotId={selectedSpot?.id}
-                    gate={gateLocation}
-                    onGateClick={() => adminMode && handleRemoveGate()}
+                    gates={gates}
+                    selectedGateId={selectedGateId}
+                    onGateClick={(id) => setSelectedGateId(id)}
                     onSpotMoveEnd={handleSpotMoveEnd}
                     spotWidth={spotWidth}
                     spotHeight={spotHeight}
@@ -641,6 +865,22 @@ export default function MapPage() {
                         errorMessage={saveError}
                     />
                 )}
+
+                {/* --- Gate Selection Modal --- */}
+                <GateSelectionModal
+                    isOpen={isGateModalOpen}
+                    onClose={() => setIsGateModalOpen(false)}
+                    gates={gates}
+                    selectedGateId={selectedGateId}
+                    onSelectGate={(id) => {
+                        setSelectedGateId(id);
+                        setIsGateModalOpen(false);
+                        // Optional: Trigger find nearest immediately?
+                        // Let's just select it for now, user can click find again or we can trigger it.
+                        // Ideally we trigger it but we need to pass state. 
+                        // For now just select.
+                    }}
+                />
 
                 {/* --- Spot Detail Panel --- */}
                 {selectedSpot && !isAddMode && (

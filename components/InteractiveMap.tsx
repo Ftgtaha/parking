@@ -15,8 +15,9 @@ interface InteractiveMapProps {
     onMapClick?: (x: number, y: number) => void;
     tempSpot?: { x_coord: number; y_coord: number; floor_level: number; width?: number; height?: number; rotation?: number } | null;
     selectedSpotId?: number | null;
-    gate?: { x: number; y: number } | null;
-    onGateClick?: () => void;
+    gates?: { id: number; x: number; y: number; name: string }[];
+    selectedGateId?: number | null;
+    onGateClick?: (gateId: number) => void;
     onSpotMoveEnd?: (id: number, x: number, y: number) => void;
     spotWidth?: number;
     spotHeight?: number;
@@ -31,7 +32,8 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     onMapClick,
     tempSpot,
     selectedSpotId,
-    gate,
+    gates = [],
+    selectedGateId,
     onGateClick,
     onSpotMoveEnd,
     spotWidth = 60,
@@ -41,6 +43,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
     const [draggedSpot, setDraggedSpot] = useState<{ id: number; startX: number; startY: number; initialSpotX: number; initialSpotY: number } | null>(null);
     const [currentDragPos, setCurrentDragPos] = useState<{ x: number; y: number } | null>(null);
     const mapContainerRef = React.useRef<HTMLDivElement>(null);
+    const hasMovedRef = React.useRef(false);
 
     const [mapDimensions, setMapDimensions] = useState<{ width: number; height: number } | null>(null);
 
@@ -86,6 +89,7 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
             initialSpotY: spot.y_coord,
         });
         setCurrentDragPos({ x: spot.x_coord, y: spot.y_coord });
+        hasMovedRef.current = false;
     };
 
     const handleSpotPointerMove = (e: React.PointerEvent) => {
@@ -98,6 +102,10 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
         // Calculate delta in pixels
         const deltaXPixels = e.clientX - draggedSpot.startX;
         const deltaYPixels = e.clientY - draggedSpot.startY;
+
+        if (Math.abs(deltaXPixels) > 3 || Math.abs(deltaYPixels) > 3) {
+            hasMovedRef.current = true;
+        }
 
         // Convert delta to percentage relative to current map size (handles zoom)
         const deltaXPercent = (deltaXPixels / mapRect.width) * 100;
@@ -199,25 +207,20 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                             onPointerUp={handleSpotPointerUp}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                // Only trigger click if not dragging (simple check: if we just released a drag, we might fallback here? 
-                                                // actually onPointerUp happens before onClick usually, but preventing default in pointerdown often kills click. 
-                                                // So we might technically block `onSpotClick` during drag mode.
-                                                // But let's keep it simply separated: 
-                                                // If we didn't drag significantly? Ideally separate drag vs click logic.
-                                                // For now, let's allow click if valid.
-                                                if (!isDragging) onSpotClick?.(spot);
+                                                // Only trigger click if we didnt drag significantly
+                                                if (!hasMovedRef.current) onSpotClick?.(spot);
                                             }}
                                             className={clsx(
                                                 "absolute cursor-pointer transition-all duration-300",
-                                                "flex items-center justify-center rounded-md shadow-md z-10",
+                                                "flex items-center justify-center rounded-none shadow-md z-10",
                                                 // Highlight Selected Spot
-                                                selectedSpotId === spot.id ? "z-50 ring-4 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
+                                                selectedSpotId === spot.id ? "z-50 ring-1 ring-blue-500 scale-110 shadow-xl" : "hover:scale-110",
                                                 // Status Colors with Pulse for Reserved/Occupied
-                                                spot.status === 0 ? "bg-green-500 border-2 border-white" : "",
-                                                spot.status === 1 ? "bg-purple-600 border-2 border-white animate-pulse" : "",
-                                                spot.status === 2 ? "bg-red-500 border-2 border-white" : "",
+                                                spot.status === 0 ? "bg-green-500 border border-white" : "",
+                                                spot.status === 1 ? "bg-purple-600 border border-white animate-pulse" : "",
+                                                spot.status === 2 ? "bg-red-500 border border-white" : "",
                                                 // Dragging styles
-                                                isDragging ? "z-[60] scale-125 opacity-90 shadow-2xl ring-4 ring-yellow-400 cursor-grabbing transition-none" : ""
+                                                isDragging ? "z-[60] scale-125 opacity-90 shadow-2xl ring-1 ring-yellow-400 cursor-grabbing transition-none" : ""
                                             )}
                                             style={{
                                                 left: `${x}%`,
@@ -262,25 +265,45 @@ export const InteractiveMap = forwardRef<ReactZoomPanPinchRef, InteractiveMapPro
                                     </div>
                                 )}
 
-                                {/* Gate / Entrance Icon */}
-                                {gate && activeFloor === 0 && (
+                                {/* Gates / Entrances Icons */}
+                                {activeFloor === 0 && gates.map((gate) => (
                                     <div
+                                        key={gate.id}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            onGateClick?.();
+                                            onGateClick?.(gate.id);
                                         }}
                                         className="absolute transform -translate-x-1/2 -translate-y-1/2 z-30 flex flex-col items-center cursor-pointer group/gate"
                                         style={{
                                             left: `${gate.x}%`,
                                             top: `${gate.y}%`,
                                         }}
-                                        title="Entrance (Click to Manage)"
+                                        title={`Entrance: ${gate.name} (Click to Select)`}
                                     >
-                                        <div className="bg-white p-0.5 md:p-1 rounded-full shadow-md border border-slate-800 group-hover/gate:scale-110 group-hover/gate:border-red-600 transition-all">
-                                            <DoorOpen size={14} className="text-slate-800 group-hover/gate:text-red-600 md:w-4 md:h-4 w-3 h-3" />
+                                        <div className={clsx(
+                                            "p-[1px] md:p-0.5 rounded-full shadow-md border transition-all", // Reduced padding
+                                            selectedGateId === gate.id
+                                                ? "bg-blue-600 border-blue-400 scale-110 z-40" // Reduced scale
+                                                : "bg-white border-slate-800 group-hover/gate:scale-105 group-hover/gate:border-blue-600",
+                                            !selectedGateId && "animate-bounce" // Draw attention if nothing selected
+                                        )}>
+                                            <DoorOpen
+                                                size={12} // Reduced base size
+                                                className={clsx(
+                                                    "md:w-3 md:h-3 w-2.5 h-2.5 transition-colors", // Reduced icon size classes
+                                                    selectedGateId === gate.id ? "text-white" : "text-slate-800 group-hover/gate:text-blue-600"
+                                                )}
+                                            />
+                                        </div>
+                                        {/* Gate Name Label (Tooltip only now) */}
+                                        <div className={clsx(
+                                            "absolute top-full mt-1 px-1.5 py-0.5 rounded bg-black/80 text-white text-[10px] whitespace-nowrap opacity-0 group-hover/gate:opacity-100 transition-opacity pointer-events-none z-50",
+                                            // selectedGateId === gate.id && "!opacity-100 bg-blue-600/90" // User asked to remove "number" (label), so we hide it unless hovered
+                                        )}>
+                                            {gate.name}
                                         </div>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </TransformComponent>
                     </>

@@ -610,8 +610,10 @@ export default function MapPage() {
     const handleSpotMoveEnd = async (id: number, x: number, y: number) => {
         if (!userId || !adminMode) return;
 
-        const roundedX = Math.round(x);
-        const roundedY = Math.round(y);
+        // Use the value as-is (already rounded to 2 decimals by InteractiveMap)
+        // or ensure we keep precision if needed.
+        const roundedX = x;
+        const roundedY = y;
 
         // Optimistic Update
         updateSpot(id, { x_coord: roundedX, y_coord: roundedY });

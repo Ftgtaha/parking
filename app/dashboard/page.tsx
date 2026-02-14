@@ -54,7 +54,7 @@ export default function DashboardPage() {
                 </h1>
 
                 <p className="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto font-medium">
-                    Find the perfect spot at your university campus. Real-time availability, secure booking, and zero hassle.
+                    Find the perfect spot at your campus, office, or favorite destination. Real-time availability, secure booking, and zero hassle.
                 </p>
 
                 {/* Search Bar - Glassmorphism */}
@@ -64,7 +64,7 @@ export default function DashboardPage() {
                         <Search className="ml-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={24} />
                         <input
                             type="text"
-                            placeholder="Search for your university..."
+                            placeholder="Search for your destination..."
                             className="w-full px-4 py-3 bg-transparent text-slate-800 placeholder-slate-400 focus:outline-none text-lg font-medium"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -80,7 +80,7 @@ export default function DashboardPage() {
                         <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Search size={32} className="text-slate-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-700">No universities found</h3>
+                        <h3 className="text-xl font-bold text-slate-700">No locations found</h3>
                         <p className="text-slate-500 mt-2">Try searching for something else.</p>
                     </div>
                 ) : (

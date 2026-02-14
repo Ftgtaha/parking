@@ -21,30 +21,55 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
-        // Fetch real Supabase user
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+        const fetchUserData = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
 
-            if (user) {
-                setUserId(user.id);
+            if (session?.user) {
+                setUserId(session.user.id);
 
                 // Fetch Role from DB
                 const { data: profile } = await supabase
                     .from('users')
                     .select('role')
-                    .eq('id', user.id)
+                    .eq('id', session.user.id)
                     .single();
 
                 if (profile && profile.role) {
                     setRole(profile.role as UserRole);
                 }
             } else {
-                // For demo: Generate a random ID if not logged in
-                const demoId = '00000000-0000-0000-0000-000000000000';
-                setUserId(demoId);
+                setUserId(null);
+                setRole('student'); // Default fallback
             }
         };
-        getUser();
+
+        // Initial fetch
+        fetchUserData();
+
+        // Realtime Auth Listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                setUserId(session.user.id);
+                // We re-fetch profile to be safe, or we could decode metadata if role is there
+                supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', session.user.id)
+                    .single()
+                    .then(({ data: profile }) => {
+                        if (profile && profile.role) {
+                            setRole(profile.role as UserRole);
+                        }
+                    });
+            } else {
+                setUserId(null);
+                setRole('student');
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     const toggleRole = () => {
